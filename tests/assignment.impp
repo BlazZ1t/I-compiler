@@ -1,0 +1,17 @@
+routine assignInt() : integer is
+    var x : integer
+    x := 5
+    return x
+end
+
+routine assignReal() : real is
+    var y : real
+    y := 3.14
+    return y
+end
+
+routine assignBool() : bool is
+    var z : bool
+    z := false
+    return z
+end
