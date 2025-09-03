@@ -1,0 +1,18 @@
+routine testIf() : boolean is
+    var x : integer is 5
+    var y : integer is 10
+    if x < y then
+        return true
+    end
+    return false
+end
+
+routine testElse() : boolean is
+    var x : integer is 5
+    var y : integer is 10
+    if x < y then
+        return true
+    else
+        return false
+    end
+end

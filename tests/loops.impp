@@ -1,0 +1,19 @@
+routine whileLoop() is
+    var x : integer is 0
+    while x < 5 loop
+        print x
+        x := x + 1
+    end
+end
+
+routine forLoop() is
+    for i in 1 .. 5 loop
+        print i
+    end
+end
+
+routine forLoopReversed() is
+    for i in 5 .. 1 reverse loop
+        print i
+    end
+end

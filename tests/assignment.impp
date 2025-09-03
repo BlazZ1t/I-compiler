@@ -1,17 +1,40 @@
+//Routine for integer assignment test
 routine assignInt() : integer is
     var x : integer
     x := 5
     return x
 end
 
+//Routine for real assignment test
 routine assignReal() : real is
     var y : real
     y := 3.14
     return y
 end
 
-routine assignBool() : bool is
-    var z : bool
+//Routine for boolean assignment test
+routine assignboolean() : boolean is
+    var z : boolean
     z := false
     return z
+end
+
+//Routine for testing bool to int assignment
+routine assignBoolToInt() : integer is
+    var b : boolean is true
+    var i : integer is b
+    return i
+end
+
+//Routine for testing real to int assignment
+routine assignRealToInt() : integer is
+    var r : real is 3.14
+    var i : integer is r
+    return i
+end
+
+routine assignRealToBool() : boolean is 
+    var r : real is 3.14
+    var b : boolean is r
+    return b
 end

@@ -1,0 +1,17 @@
+routine testAnd() is
+    var x : boolean is true
+    var y : boolean is false
+    return x and z
+end
+
+routine testOr() is
+    var x : boolean is true
+    var y : boolean is false
+    return x or z
+end
+
+routine testXor() is
+    var x : boolean is true
+    var y : boolean is false
+    return x xor z
+end

@@ -1,0 +1,28 @@
+routine pointRecord(xPosition : integer, yPosition : integer) : integer is
+    type Point is record
+        var x : integer
+        var y : integer
+    end
+
+    var p : Point
+
+    p.x := xPosition
+    p.y := yPosition
+    return p.x
+end
+
+routine integerArray() : integer is
+    type IntegerArray is array [10] integer
+    var intArray : IntegerArray
+    var sum : integer is 0
+
+    for i 10 .. 1 reverse loop
+        intArray[11 - i] := i
+    end
+
+    for i 1 .. 5 loop
+        var sum := sum + intArray[i]
+    end
+
+    return sum
+end
