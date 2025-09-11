@@ -125,7 +125,7 @@ class Lexer
             case "false":
                 return new Token(TokenType.False, wordString, startLine, startColumn);
             case "not":
-                return new Token(TokenType.False, wordString, startLine, startColumn);
+                return new Token(TokenType.Not, wordString, startLine, startColumn);
             case "and":
                 return new Token(TokenType.And, wordString, startLine, startColumn);
             case "or":
