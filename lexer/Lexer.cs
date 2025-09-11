@@ -303,6 +303,7 @@ class Lexer
             {
                 while (!IsEndOfFile() && Peek() != '\n')
                     Advance();
+                Advance();
             }
             else
             {
