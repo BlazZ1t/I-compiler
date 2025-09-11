@@ -57,8 +57,10 @@ public enum TokenType
     Dot,           // .
     Comma,         // ,
     Semicolon,     // ;
+    Colon,         // :
 
     // Special
     EOF,
+    NewLine,
     Error
 }

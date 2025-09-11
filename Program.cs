@@ -7,39 +7,38 @@ namespace ImperativeLang
     {
         static void Main(string[] args)
         {
-            if (args.Length == 0)
-            {
-                PrintUsage();
-                return;
-            }
+            // if (args.Length == 0)
+            // {
+            //     PrintUsage();
+            //     return;
+            // }
 
-            var command = args[0].ToLower();
+            // var command = args[0].ToLower();
 
-            switch (command)
-            {
-                case "compile":
-                    if (args.Length < 2)
-                    {
-                        System.Console.WriteLine("Error: Missing file path");
-                        return;
-                    }
-                    HandleCompile(args[1]);
-                    break;
-                case "run":
-                    if (args.Length < 2)
-                    {
-                        System.Console.WriteLine("Error: Missing file path");
-                        return;
-                    }
-                    HandleRun(args[1], args.Length > 2 ? args[2..] : Array.Empty<string>());
-                    break;
-                default:
-                    System.Console.WriteLine($"Unkown command: {command}");
-                    PrintUsage();
-                    break;
-            }
-
-
+            // switch (command)
+            // {
+            //     case "compile":
+            //         if (args.Length < 2)
+            //         {
+            //             System.Console.WriteLine("Error: Missing file path");
+            //             return;
+            //         }
+            //         HandleCompile(args[1]);
+            //         break;
+            //     case "run":
+            //         if (args.Length < 2)
+            //         {
+            //             System.Console.WriteLine("Error: Missing file path");
+            //             return;
+            //         }
+            //         HandleRun(args[1], args.Length > 2 ? args[2..] : Array.Empty<string>());
+            //         break;
+            //     default:
+            //         System.Console.WriteLine($"Unkown command: {command}");
+            //         PrintUsage();
+            //         break;
+            // }
+            HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/assignment.impp");
         }
 
         private static void HandleCompile(string filePath)
@@ -56,8 +55,13 @@ namespace ImperativeLang
                 return;
             }
 
-            string source = File.ReadAllText(filePath);
-            System.Console.WriteLine(source);
+            Lexer lexer = new Lexer(File.ReadAllText(filePath));
+            System.Console.WriteLine("Starting lexer...");
+            List<Token> tokens = lexer.Tokenize().ToList();
+            foreach (Token item in tokens)
+            {
+                System.Console.WriteLine(item);
+            }
         }
 
         private static void HandleRun(string filePath, string[] runArgs)

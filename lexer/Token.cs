@@ -18,5 +18,15 @@ class Token
         return $"Type: {tokenType}, lexeme: {lexeme}, line: {line}, column: {column}";
     }
 
+    public TokenType getTokenType()
+    {
+        return tokenType;
+    }
+
+    public String getLexeme()
+    {
+        return lexeme;
+    }
+
     
 }
