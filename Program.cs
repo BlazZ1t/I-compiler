@@ -25,14 +25,6 @@ namespace ImperativeLang
                     }
                     HandleCompile(args[1]);
                     break;
-                case "run":
-                    if (args.Length < 2)
-                    {
-                        System.Console.WriteLine("Error: Missing file path");
-                        return;
-                    }
-                    HandleRun(args[1], args.Length > 2 ? args[2..] : Array.Empty<string>());
-                    break;
                 default:
                     System.Console.WriteLine($"Unkown command: {command}");
                     PrintUsage();
@@ -63,16 +55,10 @@ namespace ImperativeLang
             }
         }
 
-        private static void HandleRun(string filePath, string[] runArgs)
-        {
-            System.Console.WriteLine("No way to run this for now!");
-        }
-
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
             Console.WriteLine("  compile [file.impp]  Compile the given source file");
-            Console.WriteLine("  run [file.impp] [args...] Run compiled program");
         }
     }
 }
