@@ -138,6 +138,8 @@ class Lexer
                 return new Token(TokenType.Real, wordString, startLine, startColumn);
             case "boolean":
                 return new Token(TokenType.Boolean, wordString, startLine, startColumn);
+            case "return":
+                return new Token(TokenType.Return, wordString, startLine, startColumn);
             default:
                 return new Token(TokenType.Identifier, wordString, startLine, startColumn);
         }
