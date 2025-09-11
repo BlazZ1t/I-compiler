@@ -26,3 +26,16 @@ routine integerArray() : integer is
 
     return sum
 end
+
+routine nestedRecord() is
+    type Person is record
+        var age : integer
+        var balance : integer
+    end
+
+    type Family is record
+        var father : Person
+        var mother : Person
+        var son : Person
+    end
+end
