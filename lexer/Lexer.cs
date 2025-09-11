@@ -316,8 +316,8 @@ class Lexer
     Checkout the next character
     **/
     private char Peek(int offset = 0)
-{
-    int pos = _position + offset;
-    return pos < _source.Length ? _source[pos] : '\0';
-}
+    {
+        int pos = _position + offset;
+        return pos < _source.Length ? _source[pos] : '\0';
+    }
 }
