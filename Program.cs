@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using ImperativeLang.AST;
+using ImperativeLang.Parser;
 
 namespace ImperativeLang
 {

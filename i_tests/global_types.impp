@@ -1,0 +1,7 @@
+type int is integer
+
+var x : int
+
+routine a() : integer => 5
+
+routine b() : int => 5
