@@ -48,6 +48,7 @@ public enum TokenType
     GreaterEqual,  // >=
     Equal,         // =
     NotEqual,      // /=
+    RoutineExpression, // =>
 
     // Delimiters
     LParen,        // (

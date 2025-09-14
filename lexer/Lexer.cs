@@ -256,7 +256,15 @@ class Lexer
                     return new Token(TokenType.Greater, c.ToString(), startLine, startColumn);
                 }
             case '=':
-                return new Token(TokenType.Equal, c.ToString(), startLine, startColumn);
+                if (Peek() == '>')
+                {
+                    Advance();
+                    return new Token(TokenType.RoutineExpression, c.ToString() + _source[_position - 1].ToString(), startLine, startColumn);
+                }
+                else
+                {
+                    return new Token(TokenType.Equal, c.ToString(), startLine, startColumn);
+                }
 
             default:
                 throw new LexerException("Invalid symbol", startLine, startColumn);
