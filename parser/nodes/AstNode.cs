@@ -1,4 +1,4 @@
-namespace ImperativeLang.Parser
+namespace ImperativeLang.SyntaxAnalyzer
 {
    abstract class AstNode { }
 

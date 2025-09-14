@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using ImperativeLang.Parser;
+using ImperativeLang.SyntaxAnalyzer;
 
 namespace ImperativeLang
 {
@@ -57,12 +57,19 @@ namespace ImperativeLang
                     System.Console.WriteLine(item);
                 }
                 System.Console.WriteLine($"Recognized {tokens.Count} tokens");
+                Parser parser = new Parser(tokens);
+                ProgramNode programNode = parser.getAST();
             }
             catch (CompilerException e)
             {
                 if (e is LexerException)
                 {
                     System.Console.WriteLine($"Lexer error: {e.Message}");
+                    Environment.Exit(1);
+                }
+                else if (e is ParserException)
+                {
+                    System.Console.WriteLine($"Parser error: {e.Message}");
                     Environment.Exit(1);
                 }
             }

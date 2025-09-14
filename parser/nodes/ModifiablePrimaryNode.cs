@@ -1,4 +1,4 @@
-namespace ImperativeLang.Parser
+namespace ImperativeLang.SyntaxAnalyzer
 {
     /// <summary>
     /// Used for multipart expressions, e.g. arr[5] or point.x
