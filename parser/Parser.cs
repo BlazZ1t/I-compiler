@@ -49,7 +49,16 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         VariableDeclarationNode ParseVariable()
         {
-            //TODO: Variable
+            Token identifierToken = Peek(1);
+            if (identifierToken == null)
+            {
+                throw new ParserException($"Incomplete variable declaration", identifierToken.getLine(), identifierToken.getColumn());
+            } else if (identifierToken.getTokenType() != TokenType.Identifier) {
+                throw new ParserException($"Icorrect identifier in variable declaration '{identifierToken.getLexeme}'", identifierToken.getLine(), identifierToken.getColumn());
+            }
+
+
+            return null;
         }
 
         private Token? Peek(int offset = 0)
