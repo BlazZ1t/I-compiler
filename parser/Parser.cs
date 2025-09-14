@@ -114,8 +114,43 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         VariableDeclarationNode ParseVariable()
         {
-            //TODO: Variable
+            string identifier;
+
+            Token identifierToken = Peek(1);
+            if (identifierToken.getTokenType() == TokenType.EOF) {
+                throw new ParserException($"Incomplete variable declaration", Tokens[position].getLine(), Tokens[position].getColumn());
+            } else if (identifierToken.getTokenType() != TokenType.Identifier) {
+                throw new ParserException($"Icorrect identifier in variable declaration '{identifierToken.getLexeme}'", identifierToken.getLine(), identifierToken.getColumn());
+            }
+            Advance();
+
+            identifier = identifierToken.getLexeme();
+
+            Token separatorToken = Peek(1);
+
+            if (separatorToken.getTokenType() == TokenType.EOF) {
+                throw new ParserException($"Incomplete variable declaration", identifierToken.getLine(), identifierToken.getColumn());
+            }
+
+            if (separatorToken.getTokenType() == TokenType.Colon)
+            {
+                Advance();
+                //TODO: find Type
+            }
+            else if (separatorToken.getTokenType() == TokenType.Is)
+            {
+                Advance();
+                //TODO: find Expression
+            }
+            else
+            {
+                throw new ParserException($"Expected ':' or 'is' after variable identifier but found '{separatorToken.getLexeme}'", separatorToken.getLine(), separatorToken.getColumn());
+            }
+
+            return null;
         }
+
+
 
         private Token Advance()
         {
