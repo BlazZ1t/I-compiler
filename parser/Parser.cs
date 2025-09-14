@@ -57,10 +57,11 @@ namespace ImperativeLang.SyntaxAnalyzer
             } else if (identifierToken.getTokenType() != TokenType.Identifier) {
                 throw new ParserException($"Icorrect identifier in variable declaration '{identifierToken.getLexeme}'", identifierToken.getLine(), identifierToken.getColumn());
             }
+            Advance();
 
             identifier = identifierToken.getLexeme();
 
-            Token separatorToken = Peek(2);
+            Token separatorToken = Peek(1);
 
             if (separatorToken.getTokenType() == TokenType.EOF) {
                 throw new ParserException($"Incomplete variable declaration", identifierToken.getLine(), identifierToken.getColumn());
@@ -68,10 +69,12 @@ namespace ImperativeLang.SyntaxAnalyzer
 
             if (separatorToken.getTokenType() == TokenType.Colon)
             {
+                Advance();
                 //TODO: find Type
             }
             else if (separatorToken.getTokenType() == TokenType.Is)
             {
+                Advance();
                 //TODO: find Expression
             }
             else
@@ -82,7 +85,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             return null;
         }
 
-        
+
 
         private Token Advance()
         {
