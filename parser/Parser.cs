@@ -6,14 +6,18 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         private int position = 0;
 
+        private ProgramNode ProgramNode = new ProgramNode();
+
+        private AstNode currentNode;
+
         public Parser(List<Token> tokens)
         {
             Tokens = tokens;
+            currentNode = ProgramNode;
         }
 
         public ProgramNode getAST()
         {
-            ProgramNode programNode = new ProgramNode();
 
             while (Tokens[position].getTokenType() != TokenType.EOF)
             {
@@ -34,7 +38,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 }
             }
 
-            return programNode;
+            return ProgramNode;
         }
 
         RoutineDeclarationNode ParseRoutine()
@@ -42,9 +46,54 @@ namespace ImperativeLang.SyntaxAnalyzer
             //TODO: Routine
         }
 
-        TypeDeclarationNode ParseType()
+        TypeDeclarationNode ParseTypeDeclaration()
         {
-            
+            Token typeIdentifierToken = Peek(1);
+
+            if (typeIdentifierToken.getTokenType() == TokenType.Identifier)
+            {
+                Advance();
+                string typeIdentifier = Peek().getLexeme();
+                Token isToken = Peek(1);
+                if (isToken.getTokenType() == TokenType.Is)
+                {
+                    Advance();
+                    //Parse TypeNode
+                }
+                else
+                {
+                    throw new ParserException("Expected is after an identifier", Peek(1).getLine(), Peek(1).getColumn())
+                }
+            }
+            else
+            {
+                throw new ParserException("Expected an identifier token", Peek(1).getLine(), Peek(1).getColumn());
+            }
+        }
+
+        TypeNode ParseType() {
+            Advance();
+            if (
+                Tokens[position].getTokenType() == TokenType.Integer ||
+                Tokens[position].getTokenType() == TokenType.Real ||
+                Tokens[position].getTokenType() == TokenType.Boolean
+              )
+            {
+                switch (Tokens[position].getTokenType())
+                {
+                    case TokenType.Integer:
+                        return new PrimitiveTypeNode(PrimitiveType.Integer);
+
+                    case TokenType.Real:
+                        return new PrimitiveTypeNode(PrimitiveType.Real);
+
+                    case TokenType.Boolean:
+                        return new PrimitiveTypeNode(PrimitiveType.Boolean);
+
+                    default:
+                        throw new ParserException("Primitive type parsing error", Tokens[position].getLine(), Tokens[position].getColumn());
+               } 
+            }
         }
 
         VariableDeclarationNode ParseVariable()
@@ -61,7 +110,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             return Tokens[position];
         }
 
-        private Token? Peek(int offset = 0)
+        private Token Peek(int offset = 0)
         {
             if (position + offset < Tokens.Count)
             {
@@ -69,7 +118,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
             else
             {
-                return null;
+                return Tokens.Last();
             }
         }
     }
