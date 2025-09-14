@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using ImperativeLang.AST;
 
 namespace ImperativeLang
 {
@@ -47,11 +48,23 @@ namespace ImperativeLang
             }
 
             Lexer lexer = new Lexer(File.ReadAllText(filePath));
-            System.Console.WriteLine("Starting lexer...");
-            List<Token> tokens = lexer.Tokenize().ToList();
-            foreach (Token item in tokens)
+            try
             {
-                System.Console.WriteLine(item);
+                List<Token> tokens = lexer.Tokenize().ToList();
+                tokens = lexer.CleanUp(tokens);
+                foreach (Token item in tokens)
+                {
+                    System.Console.WriteLine(item);
+                }
+                System.Console.WriteLine($"Recognized {tokens.Count} tokens");
+            }
+            catch (CompilerException e)
+            {
+                if (e is LexerException)
+                {
+                    System.Console.WriteLine($"Lexer error: {e.Message}");
+                    Environment.Exit(1);
+                }
             }
         }
 

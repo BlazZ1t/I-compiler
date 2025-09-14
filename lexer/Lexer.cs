@@ -9,7 +9,7 @@ class Lexer
 
     private static readonly HashSet<char> LanguageSymbols = new HashSet<char>
     {
-        ':', '+', '-', '*', '/', '%', '<', '>', '=', '/', '(', ')', '[', ']', '.', ',', ';'    
+        ':', '+', '-', '*', '/', '%', '<', '>', '=', '/', '(', ')', '[', ']', '.', ',', ';'
     };
 
 
@@ -187,7 +187,8 @@ class Lexer
         return c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '<' || c == '>' || c == '=';
     }
 
-    private bool IsBracket(char c) {
+    private bool IsBracket(char c)
+    {
         return c == '(' || c == ')' || c == '[' || c == ']';
     }
 
@@ -305,7 +306,6 @@ class Lexer
             {
                 while (!IsEndOfFile() && Peek() != '\n')
                     Advance();
-                Advance();
             }
             else
             {
@@ -322,5 +322,39 @@ class Lexer
     {
         int pos = _position + offset;
         return pos < _source.Length ? _source[pos] : '\0';
+    }
+
+    public List<Token> CleanUp(List<Token> tokens)
+    {
+        var result = new List<Token>();
+
+        int i = 0;
+
+        while (i < tokens.Count && tokens[i].getTokenType() == TokenType.NewLine)
+        {
+            i++;
+        }
+
+        while (i < tokens.Count)
+        {
+            var currentToken = tokens[i];
+
+            if (currentToken.getTokenType() == TokenType.NewLine)
+            {
+                result.Add(currentToken);
+                while (i + 1 < tokens.Count && tokens[i + 1].getTokenType() == TokenType.NewLine)
+                {
+                    i++;
+                }
+            }
+            else
+            {
+                result.Add(currentToken);
+            }
+            i++;
+
+        }
+
+        return result;
     }
 }
