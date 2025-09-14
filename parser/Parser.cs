@@ -21,16 +21,17 @@ namespace ImperativeLang.SyntaxAnalyzer
 
             while (Tokens[position].getTokenType() != TokenType.EOF)
             {
-                Token token = Tokens[position];
+                Token token = Advance();
                 switch (token.getTokenType())
                 {
                     case TokenType.Routine:
-
+                        ProgramNode.routines.Add(ParseRoutineDeclaration());
                         break;
                     case TokenType.Type:
+                        ProgramNode.types.Add(ParseTypeDeclaration());
                         break;
-
                     case TokenType.Var:
+                        ProgramNode.variables.Add(ParseVariable());
                         break;
 
                     default:
@@ -41,45 +42,44 @@ namespace ImperativeLang.SyntaxAnalyzer
             return ProgramNode;
         }
 
-        RoutineDeclarationNode ParseRoutine()
+        RoutineDeclarationNode ParseRoutineDeclaration()
         {
             //TODO: Routine
         }
 
         TypeDeclarationNode ParseTypeDeclaration()
         {
-            Token typeIdentifierToken = Peek(1);
+            Token typeIdentifierToken = Advance();
 
             if (typeIdentifierToken.getTokenType() == TokenType.Identifier)
             {
-                Advance();
-                string typeIdentifier = Peek().getLexeme();
-                Token isToken = Peek(1);
+                string typeIdentifier = typeIdentifierToken.getLexeme();
+                Token isToken = Advance();
                 if (isToken.getTokenType() == TokenType.Is)
                 {
-                    Advance();
-                    //Parse TypeNode
+                    TypeNode typeNode = ParseType();
+                    return new TypeDeclarationNode(typeIdentifier, typeNode);
                 }
                 else
                 {
-                    throw new ParserException("Expected is after an identifier", Peek(1).getLine(), Peek(1).getColumn())
+                    throw new ParserException("Expected is after an identifier", isToken.getLine(), isToken.getColumn());
                 }
             }
             else
             {
-                throw new ParserException("Expected an identifier token", Peek(1).getLine(), Peek(1).getColumn());
+                throw new ParserException("Expected an identifier token", typeIdentifierToken.getLine(), typeIdentifierToken.getColumn());
             }
         }
 
         TypeNode ParseType() {
-            Advance();
+            Token typeToken = Advance();
             if (
-                Tokens[position].getTokenType() == TokenType.Integer ||
-                Tokens[position].getTokenType() == TokenType.Real ||
-                Tokens[position].getTokenType() == TokenType.Boolean
+                typeToken.getTokenType() == TokenType.Integer ||
+                typeToken.getTokenType() == TokenType.Real ||
+                typeToken.getTokenType() == TokenType.Boolean
               )
             {
-                switch (Tokens[position].getTokenType())
+                switch (typeToken.getTokenType())
                 {
                     case TokenType.Integer:
                         return new PrimitiveTypeNode(PrimitiveType.Integer);
@@ -91,8 +91,24 @@ namespace ImperativeLang.SyntaxAnalyzer
                         return new PrimitiveTypeNode(PrimitiveType.Boolean);
 
                     default:
-                        throw new ParserException("Primitive type parsing error", Tokens[position].getLine(), Tokens[position].getColumn());
-               } 
+                        throw new ParserException("Primitive type parsing error", typeToken.getLine(), typeToken.getColumn());
+                }
+            }
+            else if (typeToken.getTokenType() == TokenType.Identifier)
+            {
+                return new UserTypeNode(typeToken.getLexeme());
+            }
+            else if (typeToken.getTokenType() == TokenType.Record)
+            {
+                //Handle record type node
+            }
+            else if (typeToken.getTokenType() == TokenType.Array)
+            {
+                //Handle array type node
+            }
+            else
+            {
+                throw new ParserException("Unexpected type", typeToken.getLine(), typeToken.getColumn());
             }
         }
 
@@ -103,11 +119,12 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         private Token Advance()
         {
-            if (Tokens[position].getTokenType() != TokenType.EOF)
+            Token token = Tokens[position];
+            if (token.getTokenType() != TokenType.EOF)
             {
                 position++;
             }
-            return Tokens[position];
+            return token;
         }
 
         private Token Peek(int offset = 0)

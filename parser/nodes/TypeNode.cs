@@ -23,7 +23,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     }
     /// <summary>
     /// Any user type reference
-    /// </summary>
+    /// /// </summary>
     /// <seealso cref="TypeDeclarationNode"/>
     class UserTypeNode : TypeNode //Any user type reference
     {
