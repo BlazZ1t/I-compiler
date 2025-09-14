@@ -49,17 +49,40 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         VariableDeclarationNode ParseVariable()
         {
+            string identifier;
+
             Token identifierToken = Peek(1);
-            if (identifierToken == null)
-            {
-                throw new ParserException($"Incomplete variable declaration", identifierToken.getLine(), identifierToken.getColumn());
+            if (identifierToken.getTokenType() == TokenType.EOF) {
+                throw new ParserException($"Incomplete variable declaration", Tokens[position].getLine(), Tokens[position].getColumn());
             } else if (identifierToken.getTokenType() != TokenType.Identifier) {
                 throw new ParserException($"Icorrect identifier in variable declaration '{identifierToken.getLexeme}'", identifierToken.getLine(), identifierToken.getColumn());
             }
 
+            identifier = identifierToken.getLexeme();
+
+            Token separatorToken = Peek(2);
+
+            if (separatorToken.getTokenType() == TokenType.EOF) {
+                throw new ParserException($"Incomplete variable declaration", identifierToken.getLine(), identifierToken.getColumn());
+            }
+
+            if (separatorToken.getTokenType() == TokenType.Colon)
+            {
+                //TODO: find Type
+            }
+            else if (separatorToken.getTokenType() == TokenType.Is)
+            {
+                //TODO: find Expression
+            }
+            else
+            {
+                throw new ParserException($"Expected ':' or 'is' after variable identifier but found '{separatorToken.getLexeme}'", separatorToken.getLine(), separatorToken.getColumn());
+            }
 
             return null;
         }
+
+        
 
         private Token Advance()
         {
@@ -70,7 +93,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             return Tokens[position];
         }
 
-        private Token? Peek(int offset = 0)
+        private Token Peek(int offset = 0)
         {
             if (position + offset < Tokens.Count)
             {
@@ -78,7 +101,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
             else
             {
-                return null;
+                return Tokens.Last();
             }
         }
     }
