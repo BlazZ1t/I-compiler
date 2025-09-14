@@ -44,7 +44,7 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         TypeDeclarationNode ParseType()
         {
-            //TODO: Type
+            
         }
 
         VariableDeclarationNode ParseVariable()
@@ -59,6 +59,15 @@ namespace ImperativeLang.SyntaxAnalyzer
 
 
             return null;
+        }
+
+        private Token Advance()
+        {
+            if (Tokens[position].getTokenType() != TokenType.EOF)
+            {
+                position++;
+            }
+            return Tokens[position];
         }
 
         private Token? Peek(int offset = 0)
