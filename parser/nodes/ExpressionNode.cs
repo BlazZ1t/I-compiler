@@ -2,6 +2,27 @@ namespace ImperativeLang.SyntaxAnalyzer
 {
     abstract class ExpressionNode : AstNode { }
 
+    enum Operator
+    {
+        Plus,          // +
+        Minus,         // -
+        Multiply,      // *
+        Divide,        // /
+        Modulo,        // %
+        Less,          // <
+        LessEqual,     // <=
+        Greater,       // >
+        GreaterEqual,  // >=
+        Equal,         // =
+        NotEqual,      // /=
+        Not,
+        And,
+        Or,
+        Xor,
+    }
+
+    
+
     /// <summary>
     /// Any operation with a binary operator, for example:
     /// x + 1
@@ -10,16 +31,23 @@ namespace ImperativeLang.SyntaxAnalyzer
     /// </summary>
     class BinaryExpressionNode : ExpressionNode
     {
-        public string Operator { get; set; } // +, -, *, /, %, etc.
+        public Operator Operator { get; set; } // +, -, *, /, %, etc.
         public ExpressionNode Left { get; set; }
         public ExpressionNode Right { get; set; }
 
-        public BinaryExpressionNode(string Operator, ExpressionNode left, ExpressionNode right)
+        public BinaryExpressionNode(Operator Operator, ExpressionNode left, ExpressionNode right)
         {
             this.Operator = Operator;
             Left = left;
             Right = right;
         }
+    }
+
+    enum UnaryOperator
+    {
+        Plus,
+        Minus,
+        Not
     }
 
     /// <summary>
@@ -29,10 +57,10 @@ namespace ImperativeLang.SyntaxAnalyzer
     /// </summary>
     class UnaryExpressionNode : ExpressionNode
     {
-        public string Operator { get; set; }
+        public UnaryOperator Operator { get; set; }
         public ExpressionNode Operand { get; set; }
 
-        public UnaryExpressionNode(string Operator, ExpressionNode operand)
+        public UnaryExpressionNode(UnaryOperator Operator, ExpressionNode operand)
         {
             this.Operator = Operator;
             Operand = operand;

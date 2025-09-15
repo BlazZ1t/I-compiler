@@ -1,3 +1,5 @@
+using System.ComponentModel.Design;
+
 namespace ImperativeLang.SyntaxAnalyzer
 {
     class Parser
@@ -25,13 +27,13 @@ namespace ImperativeLang.SyntaxAnalyzer
                 switch (token.getTokenType())
                 {
                     case TokenType.Routine:
-                        ProgramNode.routines.Add(ParseRoutineDeclaration());
+                        // ProgramNode.routines.Add(ParseRoutineDeclaration());
                         break;
                     case TokenType.Type:
                         ProgramNode.types.Add(ParseTypeDeclaration());
                         break;
                     case TokenType.Var:
-                        ProgramNode.variables.Add(ParseVariable());
+                        ProgramNode.variables.Add(ParseVariableDeclaration());
                         break;
 
                     default:
@@ -42,10 +44,10 @@ namespace ImperativeLang.SyntaxAnalyzer
             return ProgramNode;
         }
 
-        RoutineDeclarationNode ParseRoutineDeclaration()
-        {
-            //TODO: Routine
-        }
+        // RoutineDeclarationNode ParseRoutineDeclaration()
+        // {
+        //     //TODO: Routine
+        // }
 
         TypeDeclarationNode ParseTypeDeclaration()
         {
@@ -71,7 +73,8 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
         }
 
-        TypeNode ParseType() {
+        TypeNode ParseType()
+        {
             Token typeToken = Advance();
             if (
                 typeToken.getTokenType() == TokenType.Integer ||
@@ -100,11 +103,11 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
             else if (typeToken.getTokenType() == TokenType.Record)
             {
-                //Handle record type node
+                return ParseRecordDeclaration();
             }
             else if (typeToken.getTokenType() == TokenType.Array)
             {
-                //Handle array type node
+                return ParseArrayDeclaration();
             }
             else
             {
@@ -112,44 +115,197 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
         }
 
-        VariableDeclarationNode ParseVariable()
+        ArrayTypeNode ParseArrayDeclaration()
         {
-            string identifier;
+            Consume(TokenType.LBracket, "Expected '['");
+            ExpressionNode size = ParseExpression();
+            Consume(TokenType.RBracket, "Expected ']' after an expression");
+            TypeNode type = ParseType();
+            SkipSeparator();
+            return new ArrayTypeNode(type, size);
+        }
 
-            Token identifierToken = Peek(1);
-            if (identifierToken.getTokenType() == TokenType.EOF) {
-                throw new ParserException($"Incomplete variable declaration", Tokens[position].getLine(), Tokens[position].getColumn());
-            } else if (identifierToken.getTokenType() != TokenType.Identifier) {
-                throw new ParserException($"Icorrect identifier in variable declaration '{identifierToken.getLexeme}'", identifierToken.getLine(), identifierToken.getColumn());
-            }
-            Advance();
-
-            identifier = identifierToken.getLexeme();
-
-            Token separatorToken = Peek(1);
-
-            if (separatorToken.getTokenType() == TokenType.EOF) {
-                throw new ParserException($"Incomplete variable declaration", identifierToken.getLine(), identifierToken.getColumn());
-            }
-
-            if (separatorToken.getTokenType() == TokenType.Colon)
+        RecordTypeNode ParseRecordDeclaration()
+        {
+            List<VariableDeclarationNode> variables = new();
+            while (!Match(TokenType.End))
             {
-                Advance();
-                //TODO: find Type
+                variables.Add(ParseVariableDeclaration());
             }
-            else if (separatorToken.getTokenType() == TokenType.Is)
+            SkipSeparator();
+            return new RecordTypeNode(variables);
+        }
+
+        VariableDeclarationNode ParseVariableDeclaration()
+        {
+            Token identifierToken = Advance();
+
+            if (Match(TokenType.Identifier))
             {
-                Advance();
-                //TODO: find Expression
+                if (Match(TokenType.Is))
+                {
+                    ExpressionNode initializer = ParseExpression();
+                    SkipSeparator();
+                    return new VariableDeclarationNode(identifierToken.getLexeme(), initializer: initializer);
+                }
+                else if (Match(TokenType.Colon))
+                {
+                    TypeNode type = ParseType();
+                    if (Match(TokenType.Is))
+                    {
+                        ExpressionNode initializer = ParseExpression();
+                        SkipSeparator();
+                        return new VariableDeclarationNode(identifierToken.getLexeme(), type, initializer);
+                    }
+                    else
+                    {
+                        SkipSeparator();
+                        return new VariableDeclarationNode(identifierToken.getLexeme(), type);
+                    }
+                }
+                else
+                {
+                    throw new ParserException("Expected an initalizer or type reference", Peek().getLine(), Peek().getColumn());
+                }
             }
             else
             {
-                throw new ParserException($"Expected ':' or 'is' after variable identifier but found '{separatorToken.getLexeme}'", separatorToken.getLine(), separatorToken.getColumn());
+                throw new ParserException("Expected an identifier", Peek().getLine(), Peek().getColumn());
             }
-
-            return null;
         }
 
+
+        ExpressionNode ParseExpression()
+        {
+            return ParseRelationChain();
+        }
+
+        ExpressionNode ParseRelationChain()
+        {
+            ExpressionNode left = ParseRelation();
+
+            while (Check(TokenType.And) || Check(TokenType.Or) || Check(TokenType.Xor))
+            {
+                Token op = Advance();
+                ExpressionNode right = ParseRelation();
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+            }
+
+            return left;
+        }
+
+        ExpressionNode ParseRelation()
+        {
+            ExpressionNode left = ParseSimple();
+
+            if (Check(TokenType.Less) || Check(TokenType.LessEqual) || Check(TokenType.Greater) ||
+                Check(TokenType.GreaterEqual) || Check(TokenType.Equal) || Check(TokenType.NotEqual))
+            {
+                Token op = Advance();
+                ExpressionNode right = ParseSimple();
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+            }
+
+            return left;
+        }
+
+        ExpressionNode ParseSimple()
+        {
+            ExpressionNode left = ParseFactor();
+
+            while (Check(TokenType.Multiply) || Check(TokenType.Divide) || Check(TokenType.Modulo))
+            {
+                Token op = Advance();
+                ExpressionNode right = ParseFactor();
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+            }
+
+            return left;
+        }
+
+        ExpressionNode ParseFactor()
+        {
+            ExpressionNode left = ParseSummand();
+
+            while (Check(TokenType.Plus) || Check(TokenType.Minus))
+            {
+                Token op = Advance();
+                ExpressionNode right = ParseSummand();
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+            }
+
+            return left;
+        }
+
+        ExpressionNode ParseSummand()
+        {
+            if (Check(TokenType.LParen))
+            {
+                Advance();
+                ExpressionNode expr = ParseExpression();
+                Consume(TokenType.RParen, "Expected ')' after an expression");
+                return expr;
+            }
+
+            return ParsePrimary();
+        }
+
+        ExpressionNode ParsePrimary()
+        {
+            if (Check(TokenType.Plus) || Check(TokenType.Minus) || Check(TokenType.Not))
+            {
+                Token op = Advance();
+                ExpressionNode right = ParsePrimary();
+                return new UnaryExpressionNode(TokenToUnaryOperator(op), right);
+            }
+
+            if (Check(TokenType.IntegerLiteral) || Check(TokenType.RealLiteral) ||
+                Check(TokenType.True) || Check(TokenType.False))
+            {
+                Token literal = Advance();
+                PrimitiveType primitiveType;
+                if (Check(TokenType.True) || Check(TokenType.False))
+                {
+                    primitiveType = PrimitiveType.Boolean;
+                }
+                else if (Check(TokenType.IntegerLiteral))
+                {
+                    primitiveType = PrimitiveType.Integer;
+                }
+                else
+                {
+                    primitiveType = PrimitiveType.Real;
+                }
+                return new LiteralNode(literal.getLexeme(), primitiveType);
+            }
+
+            if (Check(TokenType.Identifier))
+            {
+                Token id = Advance();
+
+                if (Check(TokenType.LParen))
+                {
+                    Advance();
+                    List<ExpressionNode> args = new();
+                    if (!Check(TokenType.RParen))
+                    {
+                        do
+                        {
+                            args.Add(ParseExpression());
+                        } while (Match(TokenType.Comma));
+                    }
+                    Consume(TokenType.RParen, "Expected ')' after arguments");
+
+                    return new RoutineCallNode(id.getLexeme(), args);
+                }
+                else
+                {
+                    return new IdentifierNode(id.getLexeme());
+                }
+            }
+
+            throw new ParserException("Unexpected token in expression", Peek().getLine(), Peek().getColumn());
+        }
 
 
         private Token Advance()
@@ -173,5 +329,88 @@ namespace ImperativeLang.SyntaxAnalyzer
                 return Tokens.Last();
             }
         }
+
+        private bool Check(TokenType type)
+        {
+            return Peek().getTokenType() == type;
+        }
+
+        private bool Match(TokenType type)
+        {
+            if (Check(type))
+            {
+                Advance();
+                return true;
+            }
+            return false;
+        }
+
+        private void SkipSeparator()
+        {
+            if (Match(TokenType.NewLine))
+            {
+                return;
+            }
+
+            if (Match(TokenType.Semicolon))
+            {
+                Match(TokenType.NewLine);
+                return;
+            }
+            else
+            {
+                throw new ParserException("Expected a separator", Peek().getLine(), Peek().getColumn());
+            }
+        }
+
+        private Token Consume(TokenType type, string message)
+        {
+            if (Check(type)) return Advance();
+            throw new ParserException(message, Peek().getLine(), Peek().getColumn());
+        }
+        static Operator TokenToOperator(Token token)
+        {
+            return token.getTokenType() switch
+            {
+                TokenType.Plus => Operator.Plus,
+                TokenType.Minus => Operator.Minus,
+                TokenType.Multiply => Operator.Multiply,
+                TokenType.Divide => Operator.Divide,
+                TokenType.Modulo => Operator.Modulo,
+
+                TokenType.Less => Operator.Less,
+                TokenType.LessEqual => Operator.LessEqual,
+                TokenType.Greater => Operator.Greater,
+                TokenType.GreaterEqual => Operator.GreaterEqual,
+                TokenType.Equal => Operator.Equal,
+                TokenType.NotEqual => Operator.NotEqual,
+
+                TokenType.Not => Operator.Not,
+                TokenType.And => Operator.And,
+                TokenType.Or => Operator.Or,
+                TokenType.Xor => Operator.Xor,
+
+                _ => throw new ParserException(
+                        $"Unexpected token '{token.getLexeme()}' as operator",
+                        token.getLine(),
+                        token.getColumn())
+            };
+        }
+        
+        static UnaryOperator TokenToUnaryOperator(Token token)
+        {
+            return token.getTokenType() switch
+            {
+                TokenType.Plus  => UnaryOperator.Plus,
+                TokenType.Minus => UnaryOperator.Minus,
+                TokenType.Not   => UnaryOperator.Not,
+
+                _ => throw new ParserException(
+                        $"Unexpected token '{token.getLexeme()}' as unary operator",
+                        token.getLine(),
+                        token.getColumn())
+            };
+        }
+        
     }
 }
