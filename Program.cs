@@ -57,8 +57,8 @@ namespace ImperativeLang
                     System.Console.WriteLine(item);
                 }
                 System.Console.WriteLine($"Recognized {tokens.Count} tokens");
-                Parser parser = new Parser(tokens);
-                ProgramNode programNode = parser.getAST();
+                // Parser parser = new Parser(tokens);
+                // ProgramNode programNode = parser.getAST();
             }
             catch (CompilerException e)
             {

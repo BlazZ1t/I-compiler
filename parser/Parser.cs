@@ -10,12 +10,9 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         private ProgramNode ProgramNode = new ProgramNode();
 
-        private AstNode currentNode;
-
         public Parser(List<Token> tokens)
         {
             Tokens = tokens;
-            currentNode = ProgramNode;
         }
 
         public ProgramNode getAST()
@@ -27,7 +24,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 switch (token.getTokenType())
                 {
                     case TokenType.Routine:
-                        // ProgramNode.routines.Add(ParseRoutineDeclaration());
+                        ProgramNode.routines.Add(ParseRoutineDeclaration());
                         break;
                     case TokenType.Type:
                         ProgramNode.types.Add(ParseTypeDeclaration());
@@ -44,10 +41,71 @@ namespace ImperativeLang.SyntaxAnalyzer
             return ProgramNode;
         }
 
-        // RoutineDeclarationNode ParseRoutineDeclaration()
-        // {
-        //     //TODO: Routine
-        // }
+        RoutineDeclarationNode ParseRoutineDeclaration()
+        {
+            Token identifierToken = Advance();
+
+            if (Match(TokenType.LParen))
+            {
+                List<ParameterNode> parameters = new();
+                TypeNode? returnType = null;
+                while (!Match(TokenType.RParen))
+                {
+                    parameters.Add(ParseParameter());
+                }
+
+                if (Match(TokenType.Colon))
+                {
+                    returnType = ParseType();
+                }
+                if (Match(TokenType.Is))
+                {
+                    BlockRoutineBodyNode body = ParseBlockBody();
+                    SkipSeparator();
+                    return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, body);
+                }
+                else if (Match(TokenType.RoutineExpression))
+                {
+                    ExpressionRoutineBodyNode body = ParseExpressionBody();
+                    SkipSeparator();
+                    return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, body);
+                }
+                else
+                {
+                    throw new ParserException("Unexpected routine body structure", Peek().getLine(), Peek().getColumn());
+                }
+            }
+            else
+            {
+                throw new ParserException("Expected '('", Peek().getLine(), Peek().getColumn());
+            }
+        }
+
+        ExpressionRoutineBodyNode ParseExpressionBody() {
+            return new ExpressionRoutineBodyNode(ParseExpression());
+        }
+
+        BlockRoutineBodyNode ParseBlockBody()
+        {
+            List<AstNode> bodyContents = new();
+            while (!Match(TokenType.End))
+            {
+                
+            }
+            return new BlockRoutineBodyNode(bodyContents);
+        }
+
+        ParameterNode ParseParameter()
+        {
+            TypeNode type = ParseType();
+            Token identifierToken = Advance();
+            if (!Check(TokenType.Identifier))
+            {
+                throw new ParserException("Expected an identifier", Peek().getLine(), Peek().getColumn());
+            }
+            Consume(TokenType.Comma, "Expected a comma after a parameter");
+            return new ParameterNode(identifierToken.getLexeme(), type);
+        }
 
         TypeDeclarationNode ParseTypeDeclaration()
         {
