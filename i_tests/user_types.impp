@@ -39,3 +39,8 @@ routine nestedRecord() is
         var son : Person
     end
 end
+
+routine typeAlias() : integer is
+    type int is integer
+    var x : int
+end

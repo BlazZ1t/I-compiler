@@ -1,6 +1,4 @@
 type int is integer
 
-routine sum(x : int, y : int) : int is
-    z := x + y
-    return z
-end
+var x : int
+

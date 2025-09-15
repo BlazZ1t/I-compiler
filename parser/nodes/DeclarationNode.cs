@@ -14,6 +14,10 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         public VariableDeclarationNode(string name, TypeNode? varType = null, ExpressionNode? initializer = null)
         {
+            if (varType == null && initializer == null)
+            {
+                throw new ParserException("Expected either type or an initializer value");
+            }
             Name = name;
             VarType = varType;
             Initializer = initializer;
