@@ -1,2 +1,6 @@
 routine getFive() : integer => 5
 //NEW FOUND OUT ROUTINE POSSIBLE RETURN THINGY BE AWARE OF IT
+
+routine getFiveBody() : integer is
+    return 5
+end
