@@ -87,7 +87,7 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         BlockRoutineBodyNode ParseBlockBody()
         {
-            List<AstNode> bodyContents = new();
+            List<Node> bodyContents = new();
             while (!Match(TokenType.End))
             {
                 
@@ -358,7 +358,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 }
                 else
                 {
-                    return new IdentifierNode(id.getLexeme());
+                    return new ModifiablePrimaryNode(id.getLexeme());
                 }
             }
 

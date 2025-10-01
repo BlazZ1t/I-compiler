@@ -6,26 +6,26 @@ namespace ImperativeLang.SyntaxAnalyzer
      class ModifiablePrimaryNode : ExpressionNode // e.g. arr[5] or point.x
     {
         public string BaseName { get; set; } //Identifier name
-        public List<AccessPart> AccessPart { get; set; } = new(); //Part accessed, e.g. [5] or .x
+        public AccessPart? AccessPart { get; set; } //Part accessed, e.g. [5] or .x
 
-        public ModifiablePrimaryNode(string baseName, List<AccessPart>? accessPart)
+        public ModifiablePrimaryNode(string baseName, AccessPart? accessPart = null)
         {
             BaseName = baseName;
-            AccessPart = accessPart ?? new List<AccessPart>();
+            AccessPart = accessPart;
         }
     }
 
-    abstract class AccessPart : AstNode { } 
+    abstract class AccessPart : Node { } 
     /// <summary>
     /// Access part for record types, e.g. the .x part in point.x
     /// </summary>
     class FieldAccess : AccessPart //e.g. .x
     {
-        public string FieldName { get; set; }
+        public ModifiablePrimaryNode NextPrimary { get; set; }
 
-        public FieldAccess (string fieldName)
+        public FieldAccess (ModifiablePrimaryNode nextPrimary)
         {
-            FieldName = fieldName;
+            NextPrimary = nextPrimary;
         }
     }
 
@@ -36,9 +36,12 @@ namespace ImperativeLang.SyntaxAnalyzer
     {
         public ExpressionNode Index { get; set; }
 
-        public ArrayAccess(ExpressionNode index)
+        public AccessPart? AccessPart { get; set; }
+
+        public ArrayAccess(ExpressionNode index, AccessPart accessPart)
         {
             Index = index;
+            AccessPart = accessPart;
         }
     }
 }
