@@ -28,6 +28,128 @@ namespace ImperativeLang.SyntaxAnalyzer
 
             return programNode;
         }
+        //TYPE DECLARATIONS
+        private TypeDeclarationNode ParseTypeDeclaration()
+        {
+            Token typeIdentifierToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
+            MatchAdvance(TokenType.Is, "Expected is after type identifier");
+            TypeNode typeNode = ParseType();
+            return new TypeDeclarationNode(typeIdentifierToken.getLexeme(), typeNode);
+        }
+
+        //STATEMENTS ---------------------------------------------
+        RoutineCallNode ParseRoutineCall(Token identifier)
+        {
+            List<ExpressionNode> args = new();
+
+            if (!Check(TokenType.RParen))
+            {
+                do
+                {
+                    args.Add(ParseExpression());
+                } while (Match(TokenType.Comma));
+            }
+            MatchAdvance(TokenType.RParen, "Expected ')' after arguments");
+
+            return new RoutineCallNode(identifier.getLexeme(), args);
+        }
+
+
+        // TYPE REFERENCES AND DEFINITIONS
+        TypeNode ParseType()
+        {
+            Token typeToken = Advance();
+
+            if (
+                typeToken.getTokenType() == TokenType.Integer ||
+                typeToken.getTokenType() == TokenType.Real ||
+                typeToken.getTokenType() == TokenType.Boolean
+              )
+            {
+                switch (typeToken.getTokenType())
+                {
+                    case TokenType.Integer:
+                        return new PrimitiveTypeNode(PrimitiveType.Integer);
+
+                    case TokenType.Real:
+                        return new PrimitiveTypeNode(PrimitiveType.Real);
+
+                    case TokenType.Boolean:
+                        return new PrimitiveTypeNode(PrimitiveType.Boolean);
+
+                    default:
+                        throw new ParserException("Primitive type parsing error", typeToken.getLine(), typeToken.getColumn());
+                }
+            }
+            else if (typeToken.getTokenType() == TokenType.Identifier)
+            {
+                return new UserTypeNode(typeToken.getLexeme());
+            }
+            else if (typeToken.getTokenType() == TokenType.Record)
+            {
+                return ParseRecordDeclaration();
+            }
+            else if (typeToken.getTokenType() == TokenType.Array)
+            {
+                return ParseArrayTypeDeclaration();
+            }
+            else
+            {
+                throw new ParserException("Unexpected type", typeToken.getLine(), typeToken.getColumn());
+            }
+        }
+
+        ArrayTypeNode ParseArrayTypeDeclaration()
+        {
+            MatchAdvance(TokenType.LBracket, "Expected '['");
+            ExpressionNode size = ParseExpression();
+            MatchAdvance(TokenType.RBracket, "Expected ']' after an expression");
+            TypeNode type = ParseType();
+            SkipSeparator();
+            return new ArrayTypeNode(type, size);
+        }
+
+        RecordTypeNode ParseRecordDeclaration()
+        {
+            List<VariableDeclarationNode> variables = new();
+            while (!Match(TokenType.End))
+            {
+                variables.Add(ParseVariableDeclaration());
+            }
+            SkipSeparator();
+            return new RecordTypeNode(variables);
+        }
+
+        private VariableDeclarationNode ParseVariableDeclaration()
+        {
+            Token identifierToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
+
+            if (Match(TokenType.Is))
+            {
+                ExpressionNode initializer = ParseExpression();
+                SkipSeparator();
+                return new VariableDeclarationNode(identifierToken.getLexeme(), initializer: initializer);
+            }
+            else if (Match(TokenType.Colon))
+            {
+                TypeNode type = ParseType();
+                if (Match(TokenType.Is))
+                {
+                    ExpressionNode initializer = ParseExpression();
+                    SkipSeparator();
+                    return new VariableDeclarationNode(identifierToken.getLexeme(), type, initializer);
+                }
+                else
+                {
+                    SkipSeparator();
+                    return new VariableDeclarationNode(identifierToken.getLexeme(), type);
+                }
+            }
+            else
+            {
+                throw new ParserException("Expected an initializer or type reference", Peek().getLine(), Peek().getColumn());
+            }
+        }
 
         // EXPRESSION PARSING ---------------------------------------------------------- 
         private ExpressionNode ParseExpression()
@@ -127,48 +249,41 @@ namespace ImperativeLang.SyntaxAnalyzer
 
                 if (Match(TokenType.LParen))
                 {
-                    List<ExpressionNode> args = new();
-
-                    if (!Check(TokenType.RParen))
-                    {
-                        do
-                        {
-                            args.Add(ParseExpression());
-                        } while (Match(TokenType.Comma));
-                    }
-                    MatchAdvance(TokenType.RParen, "Expected ')' after arguments");
-
-                    return new RoutineCallNode(id.getLexeme(), args);
+                    return ParseRoutineCall(id);
                 }
-                else
-                {
-                    var node = new ModifiablePrimaryNode(id.getLexeme());
-
-                    while (true)
-                    {
-                        if (Match(TokenType.Dot))
-                        {
-                            Token fieldToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
-                            node.AccessPart.Add(new FieldAccess(fieldToken.getLexeme()));
-                        }
-                        else if (Match(TokenType.LBracket))
-                        {
-                            ExpressionNode index = ParseExpression();
-                            MatchAdvance(TokenType.RBracket, "Expected ']' after array index expression");
-                            node.AccessPart.Add(new ArrayAccess(index));
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-
-                    return node;
-                }
-            } else
+                
+                return ParseModifiablePrimary(id);
+            }
+            else
             {
                 throw new ParserException("Expected a primary in the expression", Peek().getLine(), Peek().getColumn());
             }
+        }
+
+        ModifiablePrimaryNode ParseModifiablePrimary(Token identifier)
+        {
+            var node = new ModifiablePrimaryNode(identifier.getLexeme());
+
+            while (true)
+            {
+                if (Match(TokenType.Dot))
+                {
+                    Token fieldToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
+                    node.AccessPart.Add(new FieldAccess(fieldToken.getLexeme()));
+                }
+                else if (Match(TokenType.LBracket))
+                {
+                    ExpressionNode index = ParseExpression();
+                    MatchAdvance(TokenType.RBracket, "Expected ']' after array index expression");
+                    node.AccessPart.Add(new ArrayAccess(index));
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return node;
         }
 
         // HELPER METHODS --------------------------------------------------------------------
