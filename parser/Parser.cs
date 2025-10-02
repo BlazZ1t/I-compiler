@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Linq.Expressions;
-
 namespace ImperativeLang.SyntaxAnalyzer
 {
     class Parser
@@ -21,14 +18,30 @@ namespace ImperativeLang.SyntaxAnalyzer
 
             while (Tokens[position].getTokenType() != TokenType.EOF)
             {
-                Token token = Advance();
-
+                if (Match(TokenType.Type))
+                {
+                    programNode.types.Add(ParseTypeDeclaration());
+                    SkipSeparator();
+                }
+                else if (Match(TokenType.Var))
+                {
+                    programNode.variables.Add(ParseVariableDeclaration());
+                    SkipSeparator();
+                }
+                else if (Match(TokenType.Routine))
+                {
+                    programNode.routines.Add(ParseRoutineDeclaration());
+                }
+                else
+                {
+                    throw new ParserException("Only declarations can be performed globaly");
+                }
 
             }
 
             return programNode;
         }
-        //TYPE DECLARATIONS
+        //DECLARATIONS ---------------------------------------
         private TypeDeclarationNode ParseTypeDeclaration()
         {
             Token typeIdentifierToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
@@ -37,6 +50,74 @@ namespace ImperativeLang.SyntaxAnalyzer
             return new TypeDeclarationNode(typeIdentifierToken.getLexeme(), typeNode);
         }
 
+        private VariableDeclarationNode ParseVariableDeclaration()
+        {
+            Token identifierToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
+
+            if (Match(TokenType.Is))
+            {
+                ExpressionNode initializer = ParseExpression();
+                return new VariableDeclarationNode(identifierToken.getLexeme(), initializer: initializer);
+            }
+            else if (Match(TokenType.Colon))
+            {
+                TypeNode type = ParseType();
+                if (Match(TokenType.Is))
+                {
+                    ExpressionNode initializer = ParseExpression();
+                    return new VariableDeclarationNode(identifierToken.getLexeme(), type, initializer);
+                }
+                else
+                {
+                    return new VariableDeclarationNode(identifierToken.getLexeme(), type);
+                }
+            }
+            else
+            {
+                throw new ParserException("Expected an initializer or type reference", Peek().getLine(), Peek().getColumn());
+            }
+        }
+
+        private RoutineDeclarationNode ParseRoutineDeclaration()
+        {
+            Token identifierToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
+            MatchAdvance(TokenType.LParen, "Expected '(' before arguments");
+            List<VariableDeclarationNode> parameters = new();
+            if (!Check(TokenType.RParen))
+            {
+                do
+            {
+                parameters.Add(ParseVariableDeclaration());
+            } while (Match(TokenType.Comma));
+            }
+            MatchAdvance(TokenType.RParen, "Expected ')' after arguments");
+            TypeNode? returnType = null;
+            if (Match(TokenType.Colon))
+            {
+                returnType = ParseType();
+            }
+            if (Match(TokenType.Semicolon) || Match(TokenType.NewLine))
+            {
+                SkipSeparator();
+                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType);
+            }
+            else if (Match(TokenType.RoutineExpression))
+            {
+                ExpressionNode expression = ParseExpression();
+                SkipSeparator();
+                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, new ExpressionRoutineBodyNode(expression));
+            }
+            else if (Match(TokenType.Is))
+            {
+                SkipSeparator();
+                List<Node> body = ParseSimpleBody();
+                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, new BlockRoutineBodyNode(body));
+            }
+            else
+            {
+                throw new ParserException("Expected either a body or a separator");
+            }
+        }
         //STATEMENTS ---------------------------------------------
         RoutineCallNode ParseRoutineCall(Token identifier)
         {
@@ -54,6 +135,123 @@ namespace ImperativeLang.SyntaxAnalyzer
             return new RoutineCallNode(identifier.getLexeme(), args);
         }
 
+        List<Node> ParseSimpleBody()
+        {
+            List<Node> resultBody = new();
+            while (!Match(TokenType.End) && !Check(TokenType.Else))
+            {
+                if (Match(TokenType.While))
+                {
+                    resultBody.Add(ParseWhileLoopStatement());
+                }
+                else if (Match(TokenType.For))
+                {
+                    resultBody.Add(ParseForLoopStatement());
+                }
+                else if (Match(TokenType.If))
+                {
+                    resultBody.Add(ParseIfStatement());
+                }
+                else if (Match(TokenType.Print))
+                {
+                    resultBody.Add(ParsePrintStatement());
+                    SkipSeparator();
+                }
+                else if (Match(TokenType.Type))
+                {
+                    resultBody.Add(ParseTypeDeclaration());
+                    SkipSeparator();
+                }
+                else if (Match(TokenType.Var))
+                {
+                    resultBody.Add(ParseVariableDeclaration());
+                    SkipSeparator();
+                }
+                else if (Check(TokenType.Identifier))
+                {
+                    Token id = Advance();
+                    if (Match(TokenType.LParen))
+                    {
+                        resultBody.Add(ParseRoutineCall(id));
+                    }
+                    else
+                    {
+                        ModifiablePrimaryNode modifiablePrimary = ParseModifiablePrimary(id);
+                        MatchAdvance(TokenType.Assign, "Expected an assignment");
+                        ExpressionNode value = ParseExpression();
+                        resultBody.Add(new AssignmentNode(modifiablePrimary, value));
+                    }
+                    SkipSeparator();
+                }
+                else if (Match(TokenType.Return))
+                {
+                    ExpressionNode expression = ParseExpression();
+                    resultBody.Add(new ReturnStatementNode(expression));
+                    SkipSeparator();
+                }
+                else
+                {
+                    throw new ParserException("Unexpected token", Peek().getLine(), Peek().getColumn());
+                }
+            }
+            if (!Check(TokenType.Else))
+            {
+                SkipSeparator();   
+            }
+            return resultBody;
+        }
+
+        WhileLoopNode ParseWhileLoopStatement()
+        {
+            ExpressionNode condition = ParseExpression();
+            MatchAdvance(TokenType.Loop, "Expected 'loop' keyword");
+            SkipSeparator();
+            List<Node> body = ParseSimpleBody();
+            return new WhileLoopNode(condition, body);
+        }
+
+        ForLoopNode ParseForLoopStatement()
+        {
+            Token iteratorToken = MatchAdvance(TokenType.Identifier, "Expected an iterator variable");
+            MatchAdvance(TokenType.In, "Expected 'in'");
+            ExpressionNode rangeStart = ParseExpression();
+            RangeNode rangeNode = new RangeNode(rangeStart);
+            if (Match(TokenType.DoubleDot))
+            {
+                ExpressionNode rangeEnd = ParseExpression();
+                rangeNode.End = rangeEnd;
+            }
+            bool reverse = Match(TokenType.Reverse);
+            MatchAdvance(TokenType.Loop, "Expected 'loop' keyword");
+            SkipSeparator();
+            List<Node> body = ParseSimpleBody();
+            return new ForLoopNode(iteratorToken.getLexeme(), rangeNode, reverse, body);
+        }
+
+        PrintStatementNode ParsePrintStatement()
+        {
+            List<ExpressionNode> printArgs = new();
+            do
+            {
+                printArgs.Add(ParseExpression());
+            } while (Match(TokenType.Comma));
+            return new PrintStatementNode(printArgs);
+        }
+
+        IfStatementNode ParseIfStatement()
+        {
+            ExpressionNode condition = ParseExpression();
+            MatchAdvance(TokenType.Then, "Expected 'then'");
+            SkipSeparator();
+            List<Node> body = ParseSimpleBody();
+            List<Node>? elseBody = null;
+            if (Match(TokenType.Else))
+            {
+                SkipSeparator();
+                elseBody = ParseSimpleBody();
+            }
+            return new IfStatementNode(condition, body, elseBody);
+        }
 
         // TYPE REFERENCES AND DEFINITIONS
         TypeNode ParseType()
@@ -105,50 +303,20 @@ namespace ImperativeLang.SyntaxAnalyzer
             ExpressionNode size = ParseExpression();
             MatchAdvance(TokenType.RBracket, "Expected ']' after an expression");
             TypeNode type = ParseType();
-            SkipSeparator();
             return new ArrayTypeNode(type, size);
         }
 
         RecordTypeNode ParseRecordDeclaration()
         {
             List<VariableDeclarationNode> variables = new();
+            SkipSeparator();
             while (!Match(TokenType.End))
             {
+                MatchAdvance(TokenType.Var, "Expected 'var'");
                 variables.Add(ParseVariableDeclaration());
-            }
-            SkipSeparator();
-            return new RecordTypeNode(variables);
-        }
-
-        private VariableDeclarationNode ParseVariableDeclaration()
-        {
-            Token identifierToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
-
-            if (Match(TokenType.Is))
-            {
-                ExpressionNode initializer = ParseExpression();
                 SkipSeparator();
-                return new VariableDeclarationNode(identifierToken.getLexeme(), initializer: initializer);
             }
-            else if (Match(TokenType.Colon))
-            {
-                TypeNode type = ParseType();
-                if (Match(TokenType.Is))
-                {
-                    ExpressionNode initializer = ParseExpression();
-                    SkipSeparator();
-                    return new VariableDeclarationNode(identifierToken.getLexeme(), type, initializer);
-                }
-                else
-                {
-                    SkipSeparator();
-                    return new VariableDeclarationNode(identifierToken.getLexeme(), type);
-                }
-            }
-            else
-            {
-                throw new ParserException("Expected an initializer or type reference", Peek().getLine(), Peek().getColumn());
-            }
+            return new RecordTypeNode(variables);
         }
 
         // EXPRESSION PARSING ---------------------------------------------------------- 
@@ -238,6 +406,12 @@ namespace ImperativeLang.SyntaxAnalyzer
                     throw new ParserException("Expected integer or real literal after a unary operator", Peek().getLine(), Peek().getColumn());
                 }
             }
+            else if (Check(TokenType.IntegerLiteral) || Check(TokenType.RealLiteral))
+            {
+                Token literal = Advance();
+                return new LiteralNode(literal.getLexeme(),
+                     literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real);
+            }
             else if (Check(TokenType.True) || Check(TokenType.False))
             {
                 Token booleanLiteral = Advance();
@@ -251,7 +425,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 {
                     return ParseRoutineCall(id);
                 }
-                
+
                 return ParseModifiablePrimary(id);
             }
             else
@@ -338,10 +512,13 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 return;
             }
-
             if (Match(TokenType.Semicolon))
             {
                 Match(TokenType.NewLine);
+            }
+            else if (Check(TokenType.EOF))
+            {
+                return;
             }
             else
             {

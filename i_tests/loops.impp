@@ -1,6 +1,9 @@
 routine whileLoop() is
     var x : integer is 0
     while x < 5 loop
+        for i in 1 .. 5 loop
+            print i
+        end
         print x
         x := x + 1
     end

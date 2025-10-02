@@ -56,6 +56,7 @@ public enum TokenType
     LBracket,      // [
     RBracket,      // ]
     Dot,           // .
+    DoubleDot,     // .. for loops
     Comma,         // ,
     Semicolon,     // ;
     Colon,         // :

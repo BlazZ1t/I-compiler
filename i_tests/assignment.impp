@@ -1,6 +1,6 @@
 routine minusSign() : integer is
     var x : integer is 5
-    var y : -x
+    var y is -5
 end
 
 //Routine for integer assignment test

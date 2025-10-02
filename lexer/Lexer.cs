@@ -205,6 +205,11 @@ class Lexer
             case ']':
                 return new Token(TokenType.RBracket, c.ToString(), startLine, startColumn);
             case '.':
+                if (Peek() == '.')
+                {
+                    Advance();
+                    return new Token(TokenType.DoubleDot, c.ToString(), startLine, startColumn);
+                }
                 return new Token(TokenType.Dot, c.ToString(), startLine, startColumn);
             case ',':
                 return new Token(TokenType.Comma, c.ToString(), startLine, startColumn);

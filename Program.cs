@@ -1,6 +1,6 @@
-﻿using System;
-using System.IO;
+﻿using Newtonsoft.Json;
 using ImperativeLang.SyntaxAnalyzer;
+using Newtonsoft.Json.Converters;
 
 namespace ImperativeLang
 {
@@ -10,8 +10,7 @@ namespace ImperativeLang
         {
             if (args.Length == 0)
             {
-                PrintUsage();
-                return;
+                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/user_types.impp");
             }
 
             var command = args[0].ToLower();
@@ -26,10 +25,66 @@ namespace ImperativeLang
                     }
                     HandleCompile(args[1]);
                     break;
+                case "test":
+                    RunTests();
+                    break;
                 default:
                     System.Console.WriteLine($"Unkown command: {command}");
                     PrintUsage();
                     break;
+            }
+        }
+
+        private static void RunTests()
+        {
+            string testDir = Path.Combine(Directory.GetCurrentDirectory(), "i_tests");
+            if (!Directory.Exists(testDir))
+            {
+                Console.WriteLine($"Test directory not found: {testDir}");
+                return;
+            }
+
+            string[] files = Directory.GetFiles(testDir, "*.*", SearchOption.TopDirectoryOnly);
+
+            if (files.Length == 0)
+            {
+                Console.WriteLine("No test files found.");
+                return;
+            }
+
+            int passed = 0;
+
+            foreach (var file in files)
+            {
+                Console.WriteLine($"=== Running test: {Path.GetFileName(file)} ===");
+                try
+                {
+                    HandleCompile(file);
+                    System.Console.WriteLine();
+                    System.Console.WriteLine("Passed!");
+                    passed++;
+                }
+                catch (CompilerException e)
+                {
+                    System.Console.WriteLine($"Error while compiling {file}");
+                    if (e is LexerException)
+                    {
+                        System.Console.WriteLine($"Lexer error: {e.Message}");
+                    }
+                    else if (e is ParserException)
+                    {
+                        System.Console.WriteLine($"Parser error: {e.Message}");
+                    }
+                }
+                System.Console.WriteLine();
+            }
+            if (passed == files.Length)
+            {
+                System.Console.WriteLine("All tests passed!");
+            }
+            else
+            {
+                Console.WriteLine($"{passed}/{files.Length} passed");   
             }
         }
 
@@ -48,31 +103,19 @@ namespace ImperativeLang
             }
 
             Lexer lexer = new Lexer(File.ReadAllText(filePath));
-            try
+            List<Token> tokens = lexer.Tokenize().ToList();
+            tokens = lexer.CleanUp(tokens);
+            Parser parser = new Parser(tokens);
+            ProgramNode programNode = parser.getAST();
+
+            var settings = new JsonSerializerSettings
             {
-                List<Token> tokens = lexer.Tokenize().ToList();
-                tokens = lexer.CleanUp(tokens);
-                foreach (Token item in tokens)
-                {
-                    System.Console.WriteLine(item);
-                }
-                System.Console.WriteLine($"Recognized {tokens.Count} tokens");
-                // Parser parser = new Parser(tokens);
-                // ProgramNode programNode = parser.getAST();
-            }
-            catch (CompilerException e)
-            {
-                if (e is LexerException)
-                {
-                    System.Console.WriteLine($"Lexer error: {e.Message}");
-                    Environment.Exit(1);
-                }
-                else if (e is ParserException)
-                {
-                    System.Console.WriteLine($"Parser error: {e.Message}");
-                    Environment.Exit(1);
-                }
-            }
+                Formatting = Formatting.Indented
+            };
+            settings.Converters.Add(new StringEnumConverter());
+            string json = JsonConvert.SerializeObject(programNode, settings);
+            // System.Console.WriteLine(json);
+            
         }
 
         private static void PrintUsage()
