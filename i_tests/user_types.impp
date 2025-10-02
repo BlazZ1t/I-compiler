@@ -21,7 +21,7 @@ routine integerArray() : integer is
     end
 
     for i in 1 .. 5 loop
-        var sum is sum + intArray[i]
+        sum := sum + intArray[i]
     end
 
     return sum

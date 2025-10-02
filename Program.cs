@@ -10,7 +10,8 @@ namespace ImperativeLang
         {
             if (args.Length == 0)
             {
-                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/user_types.impp");
+                PrintUsage();
+                return;
             }
 
             var command = args[0].ToLower();
@@ -23,7 +24,7 @@ namespace ImperativeLang
                         System.Console.WriteLine("Error: Missing file path");
                         return;
                     }
-                    HandleCompile(args[1]);
+                    HandleCompile(args[1], true);
                     break;
                 case "test":
                     RunTests();
@@ -88,7 +89,7 @@ namespace ImperativeLang
             }
         }
 
-        private static void HandleCompile(string filePath)
+        private static void HandleCompile(string filePath, bool showJson = false)
         {
             if (!filePath.EndsWith(".impp", StringComparison.OrdinalIgnoreCase))
             {
@@ -108,20 +109,23 @@ namespace ImperativeLang
             Parser parser = new Parser(tokens);
             ProgramNode programNode = parser.getAST();
 
-            var settings = new JsonSerializerSettings
-            {
-                Formatting = Formatting.Indented
-            };
-            settings.Converters.Add(new StringEnumConverter());
-            string json = JsonConvert.SerializeObject(programNode, settings);
-            // System.Console.WriteLine(json);
-            
+            if (showJson)
+            { 
+                var settings = new JsonSerializerSettings
+                {
+                    Formatting = Formatting.Indented
+                };
+                settings.Converters.Add(new StringEnumConverter());
+                string json = JsonConvert.SerializeObject(programNode, settings);
+                System.Console.WriteLine(json);
+            }
         }
 
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
             Console.WriteLine("  compile [file.impp]  Compile the given source file");
+            Console.WriteLine("  test                 Test on all files in i_test directory");
         }
     }
 }
