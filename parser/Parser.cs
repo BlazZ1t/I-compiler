@@ -20,21 +20,21 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 if (Match(TokenType.Type))
                 {
-                    programNode.types.Add(ParseTypeDeclaration());
+                    programNode.declarations.Add(ParseTypeDeclaration());
                     SkipSeparator();
                 }
                 else if (Match(TokenType.Var))
                 {
-                    programNode.variables.Add(ParseVariableDeclaration());
+                    programNode.declarations.Add(ParseVariableDeclaration());
                     SkipSeparator();
                 }
                 else if (Match(TokenType.Routine))
                 {
-                    programNode.routines.Add(ParseRoutineDeclaration());
+                    programNode.declarations.Add(ParseRoutineDeclaration());
                 }
                 else
                 {
-                    throw new ParserException("Only declarations can be performed globaly");
+                    throw new ParserException("Only declarations can be performed globaly", Peek().getLine(), Peek().getColumn());
                 }
 
             }
@@ -96,7 +96,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 returnType = ParseType();
             }
-            if (Match(TokenType.Semicolon) || Match(TokenType.NewLine))
+            if (Check(TokenType.Semicolon) || Check(TokenType.NewLine))
             {
                 SkipSeparator();
                 return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType);
@@ -400,6 +400,17 @@ namespace ImperativeLang.SyntaxAnalyzer
                     Token literal = Advance();
                     return new UnaryExpressionNode(TokenToUnaryOperator(op), new LiteralNode(literal.getLexeme(),
                      literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real));
+                }
+                else if (Check(TokenType.Identifier))
+                {
+                    Token id = Advance();
+
+                    if (Match(TokenType.LParen))
+                    {
+                        return new UnaryExpressionNode(TokenToUnaryOperator(op), ParseRoutineCall(id));
+                    }
+
+                    return new UnaryExpressionNode(TokenToUnaryOperator(op), ParseModifiablePrimary(id));
                 }
                 else
                 {

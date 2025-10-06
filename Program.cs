@@ -10,7 +10,7 @@ namespace ImperativeLang
         {
             if (args.Length == 0)
             {
-                PrintUsage();
+                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/chatgpt_generated.impp");
                 return;
             }
 
@@ -24,7 +24,7 @@ namespace ImperativeLang
                         System.Console.WriteLine("Error: Missing file path");
                         return;
                     }
-                    HandleCompile(args[1], true);
+                    HandleCompile(args[1]);
                     break;
                 case "test":
                     RunTests();
@@ -58,25 +58,10 @@ namespace ImperativeLang
             foreach (var file in files)
             {
                 Console.WriteLine($"=== Running test: {Path.GetFileName(file)} ===");
-                try
-                {
-                    HandleCompile(file);
-                    System.Console.WriteLine();
-                    System.Console.WriteLine("Passed!");
-                    passed++;
-                }
-                catch (CompilerException e)
-                {
-                    System.Console.WriteLine($"Error while compiling {file}");
-                    if (e is LexerException)
-                    {
-                        System.Console.WriteLine($"Lexer error: {e.Message}");
-                    }
-                    else if (e is ParserException)
-                    {
-                        System.Console.WriteLine($"Parser error: {e.Message}");
-                    }
-                }
+                HandleCompile(file, true);
+                System.Console.WriteLine();
+                System.Console.WriteLine("Passed!");
+                passed++;
                 System.Console.WriteLine();
             }
             if (passed == files.Length)
@@ -89,7 +74,7 @@ namespace ImperativeLang
             }
         }
 
-        private static void HandleCompile(string filePath, bool showJson = false)
+        private static void HandleCompile(string filePath, bool testing = false)
         {
             if (!filePath.EndsWith(".impp", StringComparison.OrdinalIgnoreCase))
             {
@@ -103,21 +88,39 @@ namespace ImperativeLang
                 return;
             }
 
-            Lexer lexer = new Lexer(File.ReadAllText(filePath));
-            List<Token> tokens = lexer.Tokenize().ToList();
-            tokens = lexer.CleanUp(tokens);
-            Parser parser = new Parser(tokens);
-            ProgramNode programNode = parser.getAST();
+            try
+            {
+                Lexer lexer = new Lexer(File.ReadAllText(filePath));
+                List<Token> tokens = lexer.Tokenize().ToList();
+                tokens = lexer.CleanUp(tokens);
+                Parser parser = new Parser(tokens);
+                ProgramNode programNode = parser.getAST();
 
-            if (showJson)
-            { 
-                var settings = new JsonSerializerSettings
+                if (!testing)
+                { 
+                    var settings = new JsonSerializerSettings
+                    {
+                        Formatting = Formatting.Indented
+                    };
+                    settings.Converters.Add(new StringEnumConverter());
+                    string json = JsonConvert.SerializeObject(programNode, settings);
+                    System.Console.WriteLine(json);
+                }
+            }
+            catch (CompilerException e)
+            {
+            
+                System.Console.WriteLine($"Error while compiling {filePath}");
+                if (e is LexerException)
                 {
-                    Formatting = Formatting.Indented
-                };
-                settings.Converters.Add(new StringEnumConverter());
-                string json = JsonConvert.SerializeObject(programNode, settings);
-                System.Console.WriteLine(json);
+                    System.Console.WriteLine($"Lexer error: {e.Message}");
+                }
+                else if (e is ParserException)
+                {
+                    System.Console.WriteLine($"Parser error: {e.Message}");
+                }
+                return;
+                
             }
         }
 

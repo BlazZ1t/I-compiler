@@ -3,10 +3,10 @@ namespace ImperativeLang.SyntaxAnalyzer
     /// <summary>
     /// Used for multipart expressions, e.g. arr[5] or point.x
     /// </summary>
-     class ModifiablePrimaryNode : ExpressionNode // e.g. arr[5] or point.x
+    class ModifiablePrimaryNode : ExpressionNode
     {
-        public string BaseName { get; set; } //Identifier name
-        public List<AccessPart> AccessPart { get; set; } = new(); //Part accessed, e.g. [5] or .x
+        public string BaseName { get; set; }
+        public List<AccessPart> AccessPart { get; set; } = new();
 
         public ModifiablePrimaryNode(string baseName)
         {
