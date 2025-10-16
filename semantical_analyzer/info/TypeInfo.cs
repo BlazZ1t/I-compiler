@@ -1,0 +1,68 @@
+using ImperativeLang.SyntaxAnalyzer;
+
+namespace ImperativeLang.SemanticalAnalyzer
+{
+    abstract class TypeInfo
+    {
+        public abstract override bool Equals(object? obj);
+        public abstract override int GetHashCode();
+    }
+
+    class PrimitiveTypeInfo : TypeInfo
+    {
+        public PrimitiveType Type { get; set; }
+
+        public PrimitiveTypeInfo(PrimitiveType type)
+        {
+            Type = type;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is PrimitiveTypeInfo other && Type == other.Type;
+        }
+
+        public override int GetHashCode() => Type.GetHashCode();
+    }
+
+    class ArrayTypeInfo : TypeInfo
+    {
+        TypeInfo Type { get; set; }
+        int Size { get; set; }
+        string Name { get; set; }
+
+        public ArrayTypeInfo(TypeInfo type, int size, string name)
+        {
+            Type = type;
+            Size = size;
+            Name = name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ArrayTypeInfo other &&
+                Size == other.Size &&
+                Type.Equals(other.Type);
+        }
+
+        public override int GetHashCode() => HashCode.Combine(Type, Size);
+    }
+
+    class RecordTypeInfo : TypeInfo
+    {
+        string Name { get; set; } //Just look up in symbol table for fields
+
+        // Dictionary<String, TypeInfo> fields { get; set; }  // MAYBE ADD THIS
+        public RecordTypeInfo(string name)
+        {
+            Name = name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is RecordTypeInfo other && Name == other.Name;
+        }
+
+        public override int GetHashCode() => Name.GetHashCode();
+    }
+}
