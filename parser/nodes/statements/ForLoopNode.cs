@@ -9,7 +9,7 @@ namespace ImperativeLang.SyntaxAnalyzer {
         public bool Reverse { get; set; }
         public List<Node> Body { get; set; } = new();
 
-        public ForLoopNode(string iterator, RangeNode range, bool reverse, List<Node>? body = null)
+        public ForLoopNode(string iterator, RangeNode range, bool reverse, List<Node>? body = null, int line = 0, int column = 0) : base(line, column)
         {
             Iterator = iterator;
             Range = range;

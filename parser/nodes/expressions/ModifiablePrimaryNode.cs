@@ -8,13 +8,18 @@ namespace ImperativeLang.SyntaxAnalyzer
         public string BaseName { get; set; }
         public List<AccessPart> AccessPart { get; set; } = new();
 
-        public ModifiablePrimaryNode(string baseName)
+        public ModifiablePrimaryNode(string baseName, int line = 0, int column = 0) : base(line, column)
         {
             BaseName = baseName;
         }
     }
 
-    abstract class AccessPart : Node { } 
+    abstract class AccessPart : Node
+    {
+        protected AccessPart(int line = 0, int column = 0) : base(line, column)
+        {
+        }
+    }
     /// <summary>
     /// Access part for record types, e.g. the .x part in point.x
     /// </summary>
@@ -22,7 +27,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     {
         public string Name { get; set; }
 
-        public FieldAccess (string name)
+        public FieldAccess (string name, int line = 0, int column = 0) : base(line, column)
         {
             Name = name;
         }
@@ -35,7 +40,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     {
         public ExpressionNode Index { get; set; }
 
-        public ArrayAccess(ExpressionNode index)
+        public ArrayAccess(ExpressionNode index, int line = 0, int column = 0) : base(line, column)
         {
             Index = index;
         }

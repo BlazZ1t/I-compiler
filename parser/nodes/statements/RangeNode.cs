@@ -7,8 +7,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     {
         public ExpressionNode Start { get; set; }
         public ExpressionNode? End { get; set; }
-
-        public RangeNode(ExpressionNode start, ExpressionNode? end = null)
+        public RangeNode(ExpressionNode start, ExpressionNode? end = null, int line = 0, int column = 0) : base(line, column)
         {
             Start = start;
             End = end;

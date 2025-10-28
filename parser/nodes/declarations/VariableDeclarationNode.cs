@@ -8,7 +8,7 @@ namespace ImperativeLang.SyntaxAnalyzer {
         public TypeNode? VarType { get; set; }
         public ExpressionNode? Initializer { get; set; }
 
-        public VariableDeclarationNode(string name, TypeNode? varType = null, ExpressionNode? initializer = null)
+        public VariableDeclarationNode(string name, TypeNode? varType = null, ExpressionNode? initializer = null, int line = 0, int column = 0) : base(line, column)
         {
             if (varType == null && initializer == null)
             {

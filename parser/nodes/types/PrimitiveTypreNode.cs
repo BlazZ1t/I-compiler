@@ -14,7 +14,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     {
         public PrimitiveType Type { get; set; }
 
-        public PrimitiveTypeNode(PrimitiveType Type)
+        public PrimitiveTypeNode(PrimitiveType Type, int line = 0, int column = 0) : base(line, column)
         {
             this.Type = Type;
         }

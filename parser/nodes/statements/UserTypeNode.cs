@@ -8,7 +8,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     {
         public string Name { get; set; }
 
-        public UserTypeNode (string Name)
+        public UserTypeNode (string Name, int line = 0, int column = 0) : base(line, column)
         {
             this.Name = Name;
         }

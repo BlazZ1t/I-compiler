@@ -9,7 +9,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         public string Name { get; set; }
         public List<ExpressionNode> Arguments { get; set; } = new();
 
-        public RoutineCallNode(string name, List<ExpressionNode>? arguments = null)
+        public RoutineCallNode(string name, List<ExpressionNode>? arguments = null, int line = 0, int column = 0) : base(line, column)
         {
             Name = name;
             Arguments = arguments ?? new List<ExpressionNode>();

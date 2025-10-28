@@ -6,7 +6,7 @@ namespace ImperativeLang.SyntaxAnalyzer {
     {
         public List<VariableDeclarationNode> Fields { get; set; }
 
-        public RecordTypeNode(List<VariableDeclarationNode>? fields = null)
+        public RecordTypeNode(List<VariableDeclarationNode>? fields = null, int line = 0, int column = 0) : base(line, column)
         {
             Fields = fields ?? new List<VariableDeclarationNode>();
         }

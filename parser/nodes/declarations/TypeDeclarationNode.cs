@@ -12,7 +12,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         public string Name { get; set; }
         public TypeNode Type { get; set; }
 
-        public TypeDeclarationNode(string name, TypeNode type)
+        public TypeDeclarationNode(string name, TypeNode type, int line = 0, int column = 0) : base(line, column)
         {
             Name = name;
             Type = type;

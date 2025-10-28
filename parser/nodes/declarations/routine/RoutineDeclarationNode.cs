@@ -10,7 +10,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         public TypeNode? ReturnType { get; set; }
         public RoutineBodyNode? Body { get; set; }
 
-        public RoutineDeclarationNode(string name, List<VariableDeclarationNode>? parameters = null, TypeNode? returnType = null, RoutineBodyNode? body = null)
+        public RoutineDeclarationNode(string name, List<VariableDeclarationNode>? parameters = null, TypeNode? returnType = null, RoutineBodyNode? body = null, int line = 0, int column = 0) : base(line, column)
         {
             Name = name;
             Parameters = parameters ?? new List<VariableDeclarationNode>();

@@ -6,7 +6,7 @@ namespace ImperativeLang.SyntaxAnalyzer {
     {
         public ExpressionNode? Value { get; set; }
 
-        public ReturnStatementNode(ExpressionNode? value = null)
+        public ReturnStatementNode(ExpressionNode? value = null, int line = 0, int column = 0) : base(line, column)
         {
             Value = value;
         }

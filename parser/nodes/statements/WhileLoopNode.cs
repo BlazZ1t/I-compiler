@@ -8,7 +8,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         public ExpressionNode Condition { get; set; }
         public List<Node> Body { get; set; } = new();
 
-        public WhileLoopNode(ExpressionNode condition, List<Node>? body = null)
+        public WhileLoopNode(ExpressionNode condition, List<Node>? body = null, int line = 0, int column = 0) : base(line, column)
         {
             Condition = condition;
             Body = body ?? new List<Node>();

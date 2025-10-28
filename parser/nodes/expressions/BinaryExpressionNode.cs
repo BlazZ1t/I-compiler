@@ -32,7 +32,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         public ExpressionNode Left { get; set; }
         public ExpressionNode Right { get; set; }
 
-        public BinaryExpressionNode(Operator Operator, ExpressionNode left, ExpressionNode right)
+        public BinaryExpressionNode(Operator Operator, ExpressionNode left, ExpressionNode right, int line = 0, int column = 0) : base(line, column)
         {
             this.Operator = Operator;
             Left = left;
