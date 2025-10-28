@@ -132,7 +132,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
             MatchAdvance(TokenType.RParen, "Expected ')' after arguments");
 
-            return new RoutineCallNode(identifier.getLexeme(), args);
+            return new RoutineCallNode(identifier.getLexeme(), args, identifier.getLine(), identifier.getColumn());
         }
 
         List<Node> ParseSimpleBody()
@@ -179,14 +179,15 @@ namespace ImperativeLang.SyntaxAnalyzer
                         ModifiablePrimaryNode modifiablePrimary = ParseModifiablePrimary(id);
                         MatchAdvance(TokenType.Assign, "Expected an assignment");
                         ExpressionNode value = ParseExpression();
-                        resultBody.Add(new AssignmentNode(modifiablePrimary, value));
+                        resultBody.Add(new AssignmentNode(modifiablePrimary, value, id.getLine(), id.getColumn()));
                     }
                     SkipSeparator();
                 }
-                else if (Match(TokenType.Return))
+                else if (Check(TokenType.Return))
                 {
+                    Token returnToken = Advance();
                     ExpressionNode expression = ParseExpression();
-                    resultBody.Add(new ReturnStatementNode(expression));
+                    resultBody.Add(new ReturnStatementNode(expression, returnToken.getLine(), returnToken.getColumn()));
                     SkipSeparator();
                 }
                 else
@@ -230,16 +231,18 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         PrintStatementNode ParsePrintStatement()
         {
+            Token printToken = Peek(-1);
             List<ExpressionNode> printArgs = new();
             do
             {
                 printArgs.Add(ParseExpression());
             } while (Match(TokenType.Comma));
-            return new PrintStatementNode(printArgs);
+            return new PrintStatementNode(printArgs, printToken.getLine(), printToken.getColumn());
         }
 
         IfStatementNode ParseIfStatement()
         {
+            Token ifToken = Peek(-1);
             ExpressionNode condition = ParseExpression();
             MatchAdvance(TokenType.Then, "Expected 'then'");
             SkipSeparator();
@@ -250,12 +253,13 @@ namespace ImperativeLang.SyntaxAnalyzer
                 SkipSeparator();
                 elseBody = ParseSimpleBody();
             }
-            return new IfStatementNode(condition, body, elseBody);
+            return new IfStatementNode(condition, body, elseBody, ifToken.getLine(), ifToken.getColumn());
         }
 
         // TYPE REFERENCES AND DEFINITIONS
         TypeNode ParseType()
         {
+            Token typeKeyword = Peek();
             Token typeToken = Advance();
 
             if (
@@ -267,13 +271,13 @@ namespace ImperativeLang.SyntaxAnalyzer
                 switch (typeToken.getTokenType())
                 {
                     case TokenType.Integer:
-                        return new PrimitiveTypeNode(PrimitiveType.Integer);
+                        return new PrimitiveTypeNode(PrimitiveType.Integer, typeKeyword.getLine(), typeKeyword.getColumn());
 
                     case TokenType.Real:
-                        return new PrimitiveTypeNode(PrimitiveType.Real);
+                        return new PrimitiveTypeNode(PrimitiveType.Real, typeKeyword.getLine(), typeKeyword.getColumn());
 
                     case TokenType.Boolean:
-                        return new PrimitiveTypeNode(PrimitiveType.Boolean);
+                        return new PrimitiveTypeNode(PrimitiveType.Boolean, typeKeyword.getLine(), typeKeyword.getColumn());
 
                     default:
                         throw new ParserException("Primitive type parsing error", typeToken.getLine(), typeToken.getColumn());
@@ -281,7 +285,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             }
             else if (typeToken.getTokenType() == TokenType.Identifier)
             {
-                return new UserTypeNode(typeToken.getLexeme());
+                return new UserTypeNode(typeToken.getLexeme(), typeKeyword.getLine(), typeKeyword.getColumn());
             }
             else if (typeToken.getTokenType() == TokenType.Record)
             {
@@ -299,15 +303,17 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         ArrayTypeNode ParseArrayTypeDeclaration()
         {
+            Token tokenKeyword = Peek(-1);
             MatchAdvance(TokenType.LBracket, "Expected '['");
             ExpressionNode size = ParseExpression();
             MatchAdvance(TokenType.RBracket, "Expected ']' after an expression");
             TypeNode type = ParseType();
-            return new ArrayTypeNode(type, size);
+            return new ArrayTypeNode(type, size, tokenKeyword.getLine(), tokenKeyword.getColumn());
         }
 
         RecordTypeNode ParseRecordDeclaration()
         {
+            Token tokenKeyword = Peek(-1);
             List<VariableDeclarationNode> variables = new();
             SkipSeparator();
             while (!Match(TokenType.End))
@@ -316,7 +322,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 variables.Add(ParseVariableDeclaration());
                 SkipSeparator();
             }
-            return new RecordTypeNode(variables);
+            return new RecordTypeNode(variables, tokenKeyword.getLine(), tokenKeyword.getColumn());
         }
 
         // EXPRESSION PARSING ---------------------------------------------------------- 
@@ -328,7 +334,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 Token op = Advance();
                 ExpressionNode right = ParseRelation();
-                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right, op.getLine(), op.getColumn());
             }
 
             return left;
@@ -343,7 +349,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 Token op = Advance();
                 ExpressionNode right = ParseSimple();
-                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right, op.getLine(), op.getColumn());
             }
 
             return left;
@@ -357,7 +363,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 Token op = Advance();
                 ExpressionNode right = ParseFactor();
-                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right, op.getLine(), op.getColumn());
             }
 
             return left;
@@ -371,7 +377,7 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 Token op = Advance();
                 ExpressionNode right = ParseSummand();
-                left = new BinaryExpressionNode(TokenToOperator(op), left, right);
+                left = new BinaryExpressionNode(TokenToOperator(op), left, right, op.getLine(), op.getColumn());
             }
 
             return left;
@@ -399,7 +405,8 @@ namespace ImperativeLang.SyntaxAnalyzer
                     if (op.getTokenType() == TokenType.Not && Check(TokenType.RealLiteral)) throw new ParserException("Unexpected unary operator for real literal");
                     Token literal = Advance();
                     return new UnaryExpressionNode(TokenToUnaryOperator(op), new LiteralNode(literal.getLexeme(),
-                     literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real));
+                     literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real,
+                     literal.getLine(), literal.getColumn()), op.getLine(), op.getColumn());
                 }
                 else if (Check(TokenType.Identifier))
                 {
@@ -407,10 +414,10 @@ namespace ImperativeLang.SyntaxAnalyzer
 
                     if (Match(TokenType.LParen))
                     {
-                        return new UnaryExpressionNode(TokenToUnaryOperator(op), ParseRoutineCall(id));
+                        return new UnaryExpressionNode(TokenToUnaryOperator(op), ParseRoutineCall(id), op.getLine(), op.getColumn());
                     }
 
-                    return new UnaryExpressionNode(TokenToUnaryOperator(op), ParseModifiablePrimary(id));
+                    return new UnaryExpressionNode(TokenToUnaryOperator(op), ParseModifiablePrimary(id), op.getLine(), op.getColumn());
                 }
                 else
                 {
@@ -421,12 +428,13 @@ namespace ImperativeLang.SyntaxAnalyzer
             {
                 Token literal = Advance();
                 return new LiteralNode(literal.getLexeme(),
-                     literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real);
+                     literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real,
+                     literal.getLine(), literal.getColumn());
             }
             else if (Check(TokenType.True) || Check(TokenType.False))
             {
                 Token booleanLiteral = Advance();
-                return new LiteralNode(booleanLiteral.getLexeme(), PrimitiveType.Boolean);
+                return new LiteralNode(booleanLiteral.getLexeme(), PrimitiveType.Boolean, booleanLiteral.getLine(), booleanLiteral.getColumn());
             }
             else if (Check(TokenType.Identifier))
             {
@@ -454,7 +462,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 if (Match(TokenType.Dot))
                 {
                     Token fieldToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
-                    node.AccessPart.Add(new FieldAccess(fieldToken.getLexeme()));
+                    node.AccessPart.Add(new FieldAccess(fieldToken.getLexeme(), fieldToken.getLine(), fieldToken.getColumn()));
                 }
                 else if (Match(TokenType.LBracket))
                 {
