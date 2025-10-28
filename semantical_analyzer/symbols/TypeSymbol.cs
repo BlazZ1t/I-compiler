@@ -2,7 +2,7 @@ namespace ImperativeLang.SemanticalAnalyzer
 {
     class TypeSymbol : Symbol
     {
-        TypeInfo Type;
+        public TypeInfo Type { get; }
 
         public TypeSymbol(string name, TypeInfo type) : base(name)
         {

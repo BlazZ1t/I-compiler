@@ -2,14 +2,14 @@ namespace ImperativeLang.SemanticalAnalyzer
 {
     class VariableSymbol : Symbol
     {
-        TypeInfo Type { get; set; }
+        public TypeInfo Type { get; set; }
 
-        bool isInitialized { get; set; }
+        public bool IsInitialized { get; set; }
 
         public VariableSymbol(string name, TypeInfo type, bool isInitialized = false) : base(name)
         {
             Type = type;
-            this.isInitialized = isInitialized;       
+            IsInitialized = isInitialized;
         }
     }
 }

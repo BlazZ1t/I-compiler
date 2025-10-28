@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace ImperativeLang.SyntaxAnalyzer
 {
     class Parser
@@ -404,7 +406,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 {
                     if (op.getTokenType() == TokenType.Not && Check(TokenType.RealLiteral)) throw new ParserException("Unexpected unary operator for real literal");
                     Token literal = Advance();
-                    return new UnaryExpressionNode(TokenToUnaryOperator(op), new LiteralNode(literal.getLexeme(),
+                    return new UnaryExpressionNode(TokenToUnaryOperator(op), new LiteralNode(ParseLiteralValue(literal),
                      literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real,
                      literal.getLine(), literal.getColumn()), op.getLine(), op.getColumn());
                 }
@@ -427,14 +429,14 @@ namespace ImperativeLang.SyntaxAnalyzer
             else if (Check(TokenType.IntegerLiteral) || Check(TokenType.RealLiteral))
             {
                 Token literal = Advance();
-                return new LiteralNode(literal.getLexeme(),
+                return new LiteralNode(ParseLiteralValue(literal),
                      literal.getTokenType() == TokenType.IntegerLiteral ? PrimitiveType.Integer : PrimitiveType.Real,
                      literal.getLine(), literal.getColumn());
             }
             else if (Check(TokenType.True) || Check(TokenType.False))
             {
                 Token booleanLiteral = Advance();
-                return new LiteralNode(booleanLiteral.getLexeme(), PrimitiveType.Boolean, booleanLiteral.getLine(), booleanLiteral.getColumn());
+                return new LiteralNode(ParseLiteralValue(booleanLiteral), PrimitiveType.Boolean, booleanLiteral.getLine(), booleanLiteral.getColumn());
             }
             else if (Check(TokenType.Identifier))
             {
@@ -573,20 +575,39 @@ namespace ImperativeLang.SyntaxAnalyzer
                         token.getColumn())
             };
         }
-        
+
         static UnaryOperator TokenToUnaryOperator(Token token)
         {
             return token.getTokenType() switch
             {
-                TokenType.Plus  => UnaryOperator.Plus,
+                TokenType.Plus => UnaryOperator.Plus,
                 TokenType.Minus => UnaryOperator.Minus,
-                TokenType.Not   => UnaryOperator.Not,
+                TokenType.Not => UnaryOperator.Not,
 
                 _ => throw new ParserException(
                         $"Unexpected token '{token.getLexeme()}' as unary operator",
                         token.getLine(),
                         token.getColumn())
             };
+        }
+        
+        private static object ParseLiteralValue(Token token)
+        {
+            switch (token.getTokenType())
+            {
+                case TokenType.IntegerLiteral:
+                    return int.Parse(token.getLexeme());
+                case TokenType.RealLiteral:
+                    return double.Parse(token.getLexeme(), CultureInfo.InvariantCulture);
+                case TokenType.True:
+                    return true;
+
+                case TokenType.False:
+                    return false;
+
+                default:
+                    throw new AnalyzerException($"Unexpected literal token: {token.getTokenType()}");
+            }
         }
     }
 }

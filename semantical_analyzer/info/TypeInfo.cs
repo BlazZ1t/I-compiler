@@ -27,9 +27,9 @@ namespace ImperativeLang.SemanticalAnalyzer
 
     class ArrayTypeInfo : TypeInfo
     {
-        TypeInfo Type { get; set; }
-        int Size { get; set; }
-        string Name { get; set; }
+        public TypeInfo Type { get; set; }
+        public int Size { get; set; }
+        public string Name { get; set; }
 
         public ArrayTypeInfo(TypeInfo type, int size, string name)
         {
@@ -50,12 +50,13 @@ namespace ImperativeLang.SemanticalAnalyzer
 
     class RecordTypeInfo : TypeInfo
     {
-        string Name { get; set; } //Just look up in symbol table for fields
+        public string Name { get; set; } //Just look up in symbol table for fields
 
-        // Dictionary<String, TypeInfo> fields { get; set; }  // MAYBE ADD THIS
-        public RecordTypeInfo(string name)
+        public Dictionary<string, TypeInfo> Fields { get; set; }  // MAYBE ADD THIS
+        public RecordTypeInfo(string name, Dictionary<string, TypeInfo> fields)
         {
             Name = name;
+            Fields = fields;
         }
 
         public override bool Equals(object? obj)
