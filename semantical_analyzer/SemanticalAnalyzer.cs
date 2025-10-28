@@ -36,7 +36,7 @@ namespace ImperativeLang.SemanticalAnalyzer
         {
             if (Scope.Peek().ContainsKey(variableDeclarationNode.Name))
             {
-                throw new AnalyzerException($"Variable already declared: '{variableDeclarationNode.Name}'");
+                throw new AnalyzerException($"Variable already declared: '{variableDeclarationNode.Name}'", variableDeclarationNode.Line, variableDeclarationNode.Column);
             }
 
             TypeInfo variableType;
@@ -52,7 +52,7 @@ namespace ImperativeLang.SemanticalAnalyzer
                 {
                     if (!variableType.Equals(ResolveExpression(variableDeclarationNode.Initializer)))
                     {
-                        throw new AnalyzerException("Invalid initializer type");
+                        throw new AnalyzerException("Invalid initializer type", variableDeclarationNode.Initializer.Line, variableDeclarationNode.Initializer.Column);
                     }
                 }
             }
@@ -65,7 +65,7 @@ namespace ImperativeLang.SemanticalAnalyzer
         {
             if (Scope.Peek().ContainsKey(typeDeclarationNode.Name))
             {
-                throw new AnalyzerException($"Type already declared: '{typeDeclarationNode.Name}'");
+                throw new AnalyzerException($"Type already declared: '{typeDeclarationNode.Name}'", typeDeclarationNode.Line, typeDeclarationNode.Column);
             }
 
             Scope.Peek().Add(typeDeclarationNode.Name,
@@ -86,7 +86,7 @@ namespace ImperativeLang.SemanticalAnalyzer
                         case Operator.Plus or Operator.Minus or Operator.Multiply or Operator.Modulo or Operator.Divide:
                             if (leftType.Type == PrimitiveType.Boolean || rightType.Type == PrimitiveType.Boolean)
                             {
-                                throw new AnalyzerException("Non numerical operands with numerical operator");
+                                throw new AnalyzerException("Non numerical operands with numerical operator", binaryExpression.Line, binaryExpression.Column);
                             }
                             if (leftType.Type == PrimitiveType.Real || rightType.Type == PrimitiveType.Real || binaryExpression.Operator == Operator.Divide)
                             {
@@ -99,7 +99,7 @@ namespace ImperativeLang.SemanticalAnalyzer
                         case Operator.Less or Operator.LessEqual or Operator.Greater or Operator.GreaterEqual or Operator.Equal or Operator.NotEqual:
                             if (leftType.Type == PrimitiveType.Boolean || rightType.Type == PrimitiveType.Boolean)
                             {
-                                throw new AnalyzerException("Non numerical operands with numerical operator");
+                                throw new AnalyzerException("Non numerical operands with numerical operator", binaryExpression.Line, binaryExpression.Column);
                             }
                             return new PrimitiveTypeInfo(PrimitiveType.Boolean);
                         default:
@@ -107,12 +107,12 @@ namespace ImperativeLang.SemanticalAnalyzer
                             {
                                 return new PrimitiveTypeInfo(PrimitiveType.Boolean);
                             }
-                            throw new AnalyzerException("Can't perform boolean operations on numerical values");
+                            throw new AnalyzerException("Can't perform boolean operations on numerical values", binaryExpression.Line, binaryExpression.Column);
                     }
                 }
                 else
                 {
-                    throw new AnalyzerException("Invalid operand");
+                    throw new AnalyzerException("Invalid operand", binaryExpression.Line, binaryExpression.Column);
                 }
             }
             else if (expression is LiteralNode literalNode)
