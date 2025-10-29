@@ -82,7 +82,122 @@ namespace ImperativeLang.SemanticalAnalyzer
 
             foreach (var node in body)
             {
-                //Analyze statements
+                if (node is DeclarationNode declarationNode)
+                {
+                    if (declarationNode is VariableDeclarationNode variableDeclarationNode)
+                    {
+                        AddVariableDeclaration(variableDeclarationNode);
+                    }
+                    else if (declarationNode is TypeDeclarationNode typeDeclarationNode)
+                    {
+                        AddTypeDeclaration(typeDeclarationNode);
+                    }
+                    else if (declarationNode is RoutineDeclarationNode routineDeclarationNode)
+                    {
+                        throw new AnalyzerException("Can not declare nested routines", node.Line, node.Column);
+                    }
+                } else if (node is StatementNode statementNode)
+                {
+                    if (statementNode is ForLoopNode forLoopNode)
+                    {
+                        if (forLoopNode.IsArrayTraversal)
+                        {
+                            //TODO: Fuck I can't read. Figure out array traversal with for loops
+                        }
+                        else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
+                        {
+                            if (rangeStart.Type != PrimitiveType.Integer)
+                            {
+                                throw new AnalyzerException("Range values should be integers");
+                            }
+                            if (forLoopNode.Range.End != null)
+                            {
+                                if (ResolveExpressionType(forLoopNode.Range.End) is PrimitiveTypeInfo rangeEnd)
+                                {
+                                    if (rangeEnd.Type != PrimitiveType.Integer)
+                                    {
+                                        throw new AnalyzerException("Range values should be integers");
+                                    }
+                                }
+                                if (TryEvaluateExpression(forLoopNode.Range.Start, out object rangeStartNum) && TryEvaluateExpression(forLoopNode.Range.End, out object rangeEndNum))
+                                {
+                                    if (!forLoopNode.Reverse && (int)rangeEndNum < (int)rangeStartNum)
+                                    {
+                                        System.Console.WriteLine($"Warning: Range end is smaller than range start at line {forLoopNode.Line}, column {forLoopNode.Column}");
+                                    }
+                                    if (forLoopNode.Reverse && (int)rangeEndNum > (int)rangeStartNum)
+                                    {
+                                        System.Console.WriteLine($"Warning: Range end is bigger than range start at line {forLoopNode.Line}, column {forLoopNode.Column}");
+                                    }
+                                }
+                            }
+
+                        }
+                        else
+                        {
+                            throw new AnalyzerException("Range value is of wrong type", forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
+                        }
+                    }
+                    else if (statementNode is WhileLoopNode whileLoopNode)
+                    {
+                        if (ResolveExpressionType(whileLoopNode.Condition) is PrimitiveTypeInfo conditionType)
+                        {
+                            if (conditionType.Type != PrimitiveType.Boolean)
+                            {
+                                throw new AnalyzerException("Condition should be bool", whileLoopNode.Line, whileLoopNode.Column);
+                            }
+
+                            if (TryEvaluateExpression(whileLoopNode.Condition, out object condition))
+                            {
+                                if (condition is bool b)
+                                {
+                                    if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Line}, column: {whileLoopNode.Column}");
+                                } else
+                                {
+                                    throw new AnalyzerException("Condition is not being evaluated to boolean value", whileLoopNode.Line, whileLoopNode.Column);
+                                }
+                            }
+
+                            TraverseBody(new List<VariableSymbol>(), whileLoopNode.Body);
+                        }
+                        else
+                        {
+                            throw new AnalyzerException("Condition should be bool", whileLoopNode.Line, whileLoopNode.Column);
+                        }
+                    }
+                    else if (statementNode is IfStatementNode ifStatementNode)
+                    {
+                        if (ResolveExpressionType(ifStatementNode.Condition) is PrimitiveTypeInfo conditionType)
+                        {
+                            if (conditionType.Type != PrimitiveType.Boolean)
+                            {
+                                throw new AnalyzerException("Condition should be bool", ifStatementNode.Line, ifStatementNode.Column);
+                            }
+
+                            if (TryEvaluateExpression(ifStatementNode.Condition, out object condition))
+                            {
+                                if (condition is bool b)
+                                {
+                                    System.Console.WriteLine($"Warning: Condition is always {(b ? "True" : "False")} at line: {ifStatementNode.Line}, column: {ifStatementNode.Column}");
+                                }
+                                else
+                                {
+                                    throw new AnalyzerException("Condition is not being evaluated to boolean value", ifStatementNode.Line, ifStatementNode.Column);
+                                }
+                            }
+                            TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody);
+
+                            if (ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count != 0)
+                            {
+                                TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody);
+                            }
+                        }
+                        else
+                        {
+                            throw new AnalyzerException("Condition shold be bool", ifStatementNode.Line, ifStatementNode.Column);
+                        }
+                    }
+                }
             }
 
             Scope.Pop();

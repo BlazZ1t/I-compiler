@@ -7,13 +7,15 @@ namespace ImperativeLang.SyntaxAnalyzer {
         public string Iterator { get; set; }
         public RangeNode Range { get; set; }
         public bool Reverse { get; set; }
+        public bool IsArrayTraversal { get; set; }
         public List<Node> Body { get; set; } = new();
 
-        public ForLoopNode(string iterator, RangeNode range, bool reverse, List<Node>? body = null, int line = 0, int column = 0) : base(line, column)
+        public ForLoopNode(string iterator, RangeNode range, bool reverse, bool isArrayTraversal, List<Node>? body = null, int line = 0, int column = 0) : base(line, column)
         {
             Iterator = iterator;
             Range = range;
             Reverse = reverse;
+            IsArrayTraversal = isArrayTraversal;
             Body = body ?? new List<Node>();
         }
     }

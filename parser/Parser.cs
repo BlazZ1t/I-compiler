@@ -225,10 +225,10 @@ namespace ImperativeLang.SyntaxAnalyzer
                 rangeNode.End = rangeEnd;
             }
             bool reverse = Match(TokenType.Reverse);
-            MatchAdvance(TokenType.Loop, "Expected 'loop' keyword");
+            bool isArrayTraversal = Match(TokenType.Loop);
             SkipSeparator();
             List<Node> body = ParseSimpleBody();
-            return new ForLoopNode(iteratorToken.getLexeme(), rangeNode, reverse, body);
+            return new ForLoopNode(iteratorToken.getLexeme(), rangeNode, reverse, isArrayTraversal, body);
         }
 
         PrintStatementNode ParsePrintStatement()
