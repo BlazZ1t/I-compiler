@@ -1,10 +1,10 @@
-routine testAnd() is
+routine testAnd() : boolean is
     var x : boolean is true
     var y : boolean is false
-    return x and z
+    return x and y
 end
 
-routine testOr() is
+routine testOr() : boolean is
     var x : boolean is true
     var y : boolean is false
     return x or z
@@ -13,5 +13,5 @@ end
 routine testXor() is
     var x : boolean is true
     var y : boolean is false
-    return x xor z
+    return
 end

@@ -174,7 +174,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                     Token id = Advance();
                     if (Match(TokenType.LParen))
                     {
-                        resultBody.Add(ParseRoutineCall(id));
+                        resultBody.Add(new RoutineCallStatementNode(ParseRoutineCall(id), id.getLine(), id.getColumn()));
                     }
                     else
                     {
@@ -188,6 +188,12 @@ namespace ImperativeLang.SyntaxAnalyzer
                 else if (Check(TokenType.Return))
                 {
                     Token returnToken = Advance();
+                    if (Check(TokenType.NewLine) || Check(TokenType.Semicolon))
+                    {
+                        resultBody.Add(new ReturnStatementNode(null, returnToken.getLine(), returnToken.getColumn()));
+                        SkipSeparator();
+                        continue;
+                    }
                     ExpressionNode expression = ParseExpression();
                     resultBody.Add(new ReturnStatementNode(expression, returnToken.getLine(), returnToken.getColumn()));
                     SkipSeparator();
@@ -470,7 +476,7 @@ namespace ImperativeLang.SyntaxAnalyzer
                 {
                     ExpressionNode index = ParseExpression();
                     MatchAdvance(TokenType.RBracket, "Expected ']' after array index expression");
-                    node.AccessPart.Add(new ArrayAccess(index));
+                    node.AccessPart.Add(new ArrayAccess(index, identifier.getLine(), identifier.getColumn()));
                 }
                 else
                 {

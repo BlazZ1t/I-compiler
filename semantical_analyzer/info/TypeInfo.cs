@@ -1,6 +1,6 @@
 using ImperativeLang.SyntaxAnalyzer;
 
-namespace ImperativeLang.SemanticalAnalyzer
+namespace ImperativeLang.SemanticalAnalyzerNS
 {
     abstract class TypeInfo
     {

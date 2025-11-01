@@ -1,4 +1,4 @@
-namespace ImperativeLang.SemanticalAnalyzer
+namespace ImperativeLang.SemanticalAnalyzerNS
 {
     using ImperativeLang.SyntaxAnalyzer;
 
@@ -45,7 +45,7 @@ namespace ImperativeLang.SemanticalAnalyzer
                 {
                     if (routineDeclaration.Body is BlockRoutineBodyNode blockRoutineBodyNode)
                     {
-                        TraverseBody(routineSymbol.Parameters, blockRoutineBodyNode.Body);
+                        TraverseBody(routineSymbol.Parameters, blockRoutineBodyNode.Body, routineSymbol.ReturnType);
                     }
                     else if (routineDeclaration.Body is ExpressionRoutineBodyNode expressionRoutineBodyNode)
                     {
@@ -72,7 +72,8 @@ namespace ImperativeLang.SemanticalAnalyzer
             }
         }
 
-        private void TraverseBody(List<VariableSymbol> declaredSymbols, List<Node> body)
+        private void TraverseBody(List<VariableSymbol> declaredSymbols, List<Node> body, TypeInfo? returnType = null)
+        //TODO: Add checking for return statements in each code path where applicable (where returnType != null)
         {
             Scope.Push(new Dictionary<string, Symbol>());
             foreach (var symbol in declaredSymbols)
@@ -100,6 +101,7 @@ namespace ImperativeLang.SemanticalAnalyzer
                 {
                     if (statementNode is ForLoopNode forLoopNode)
                     {
+                        //TODO: Add checking for assignments to loop variable. It should be read only
                         if (forLoopNode.IsArrayTraversal)
                         {
                             //TODO: Fuck I can't read. Figure out array traversal with for loops
@@ -152,13 +154,14 @@ namespace ImperativeLang.SemanticalAnalyzer
                                 if (condition is bool b)
                                 {
                                     if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Line}, column: {whileLoopNode.Column}");
-                                } else
+                                }
+                                else
                                 {
                                     throw new AnalyzerException("Condition is not being evaluated to boolean value", whileLoopNode.Line, whileLoopNode.Column);
                                 }
                             }
 
-                            TraverseBody(new List<VariableSymbol>(), whileLoopNode.Body);
+                            TraverseBody(new List<VariableSymbol>(), whileLoopNode.Body, returnType);
                         }
                         else
                         {
@@ -185,16 +188,84 @@ namespace ImperativeLang.SemanticalAnalyzer
                                     throw new AnalyzerException("Condition is not being evaluated to boolean value", ifStatementNode.Line, ifStatementNode.Column);
                                 }
                             }
-                            TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody);
+                            TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody, returnType);
 
                             if (ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count != 0)
                             {
-                                TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody);
+                                TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody, returnType);
                             }
                         }
                         else
                         {
                             throw new AnalyzerException("Condition shold be bool", ifStatementNode.Line, ifStatementNode.Column);
+                        }
+                    }
+                    else if (statementNode is RoutineCallStatementNode routineCallStatementNode)
+                    {
+                        Symbol? symbol = LookupSymbol(routineCallStatementNode.Call.Name);
+
+                        if (symbol is RoutineSymbol routineSymbol)
+                        {
+                            if (routineCallStatementNode.Call.Arguments.Count != routineSymbol.Parameters.Count)
+                            {
+                                throw new AnalyzerException($"Expected {routineSymbol.Parameters.Count} arguments. Got {routineCallStatementNode.Call.Arguments.Count}.", routineCallStatementNode.Line, routineCallStatementNode.Column);
+                            }
+
+                            for (int i = 0; i < routineSymbol.Parameters.Count; i++)
+                            {
+                                if (!ResolveExpressionType(routineCallStatementNode.Call.Arguments[i]).Equals(routineSymbol.Parameters[i].Type))
+                                {
+                                    throw new AnalyzerException("Unexpected argument type", routineCallStatementNode.Call.Arguments[i].Line, routineCallStatementNode.Call.Arguments[i].Column);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            throw new AnalyzerException("Can not call a non-routine object", routineCallStatementNode.Line, routineCallStatementNode.Column);
+                        }
+                    }
+                    else if (statementNode is ReturnStatementNode returnStatementNode)
+                    {
+                        if (returnType == null && returnStatementNode.Value != null)
+                        {
+                            throw new AnalyzerException("Can not return anything here", returnStatementNode.Line, returnStatementNode.Column);
+                        }
+
+                        if (returnStatementNode.Value == null && returnType != null)
+                        {
+                            throw new AnalyzerException("Need a return value", returnStatementNode.Line, returnStatementNode.Column);
+                        }
+
+                        if (returnStatementNode.Value != null && returnType != null)
+                        {
+                            TypeInfo returnInfo = ResolveExpressionType(returnStatementNode.Value);
+
+                            if (!returnInfo.Equals(returnType))
+                            {
+                                throw new AnalyzerException("Invalid return value", returnStatementNode.Value.Line, returnStatementNode.Value.Column);
+                            }
+                        }
+
+                        if (!ReferenceEquals(node, body.Last()))
+                        {
+                            System.Console.WriteLine($"Warning: Unreachable code after return statement at line: {returnStatementNode.Line}, column: {returnStatementNode.Column}");
+                        }
+
+                        break;
+                    }
+                    else if (statementNode is AssignmentNode assignmentNode)
+                    {
+                        //TODO: Add checking for assignment of different types (e.g. integer to boolean)
+                        if (!ResolveExpressionType(assignmentNode.Value).Equals(ResolveExpressionType(assignmentNode.Target)))
+                        {
+                            throw new AnalyzerException("Type mismatch", assignmentNode.Line, assignmentNode.Column);
+                        }
+                    }
+                    else if (statementNode is PrintStatementNode printStatementNode)
+                    {
+                        foreach (var expression in printStatementNode.Expressions)
+                        {
+                            ResolveExpressionType(expression);
                         }
                     }
                 }

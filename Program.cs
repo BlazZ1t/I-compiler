@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using ImperativeLang.SyntaxAnalyzer;
+using ImperativeLang.SemanticalAnalyzerNS;
 using Newtonsoft.Json.Converters;
 
 namespace ImperativeLang
@@ -10,7 +11,7 @@ namespace ImperativeLang
         {
             if (args.Length == 0)
             {
-                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/chatgpt_generated.impp");
+                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/chatgpt_errors.impp");
                 return;
             }
 
@@ -95,6 +96,8 @@ namespace ImperativeLang
                 tokens = lexer.CleanUp(tokens);
                 Parser parser = new Parser(tokens);
                 ProgramNode programNode = parser.getAST();
+                SemanticalAnalyzer semanticalAnalyzer = new SemanticalAnalyzer(programNode);
+                semanticalAnalyzer.Analyze();
 
                 if (!testing)
                 { 
@@ -118,6 +121,10 @@ namespace ImperativeLang
                 else if (e is ParserException)
                 {
                     System.Console.WriteLine($"Parser error: {e.Message}");
+                }
+                else if (e is AnalyzerException)
+                {
+                    System.Console.WriteLine($"Analyzer error: {e.Message}");
                 }
                 return;
                 

@@ -1,4 +1,4 @@
-namespace ImperativeLang.SemanticalAnalyzer
+namespace ImperativeLang.SemanticalAnalyzerNS
 {
     abstract class Symbol
     {
