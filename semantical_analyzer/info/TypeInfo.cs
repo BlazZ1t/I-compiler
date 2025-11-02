@@ -6,6 +6,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
     {
         public abstract override bool Equals(object? obj);
         public abstract override int GetHashCode();
+
+        public abstract override string ToString();
     }
 
     class PrimitiveTypeInfo : TypeInfo
@@ -23,6 +25,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         }
 
         public override int GetHashCode() => Type.GetHashCode();
+
+        public override string ToString()
+        {
+            return Type.ToString().ToLower();
+        }
     }
 
     class ArrayTypeInfo : TypeInfo
@@ -46,6 +53,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         }
 
         public override int GetHashCode() => HashCode.Combine(Type, Size);
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 
     class RecordTypeInfo : TypeInfo
@@ -65,5 +77,10 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         }
 
         public override int GetHashCode() => Name.GetHashCode();
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }

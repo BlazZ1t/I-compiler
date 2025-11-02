@@ -4,12 +4,12 @@ namespace ImperativeLang.SemanticalAnalyzerNS
     {
         public TypeInfo Type { get; set; }
 
-        public bool IsInitialized { get; set; }
+        public bool IsReadOnly { get; set; }
 
-        public VariableSymbol(string name, TypeInfo type, bool isInitialized = false) : base(name)
+        public VariableSymbol(string name, TypeInfo type, bool isReadOnly = false) : base(name)
         {
             Type = type;
-            IsInitialized = isInitialized;
+            IsReadOnly = isReadOnly;
         }
     }
 }

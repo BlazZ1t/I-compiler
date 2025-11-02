@@ -101,10 +101,15 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     if (statementNode is ForLoopNode forLoopNode)
                     {
-                        //TODO: Add checking for assignments to loop variable. It should be read only
+                        TypeInfo iteratorType;
                         if (forLoopNode.IsArrayTraversal)
                         {
-                            //TODO: Fuck I can't read. Figure out array traversal with for loops
+                            TypeInfo rangeArray = ResolveExpressionType(forLoopNode.Range.Start);
+                            if (rangeArray is not ArrayTypeInfo)
+                            {
+                                throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
+                            }
+                            iteratorType = rangeArray;
                         }
                         else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
                         {
@@ -133,12 +138,15 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                     }
                                 }
                             }
+                            iteratorType = new PrimitiveTypeInfo(PrimitiveType.Integer);
 
                         }
                         else
                         {
                             throw new AnalyzerException("Range value is of wrong type", forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
                         }
+
+                        TraverseBody(new List<VariableSymbol>([new VariableSymbol(forLoopNode.Iterator, iteratorType, true)]), forLoopNode.Body);
                     }
                     else if (statementNode is WhileLoopNode whileLoopNode)
                     {
@@ -213,10 +221,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
                             for (int i = 0; i < routineSymbol.Parameters.Count; i++)
                             {
-                                if (!ResolveExpressionType(routineCallStatementNode.Call.Arguments[i]).Equals(routineSymbol.Parameters[i].Type))
-                                {
-                                    throw new AnalyzerException("Unexpected argument type", routineCallStatementNode.Call.Arguments[i].Line, routineCallStatementNode.Call.Arguments[i].Column);
-                                }
+                                CheckAssignmentPossibility(routineSymbol.Parameters[i].Type, ResolveExpressionType(routineCallStatementNode.Call.Arguments[i]), routineCallStatementNode.Call.Arguments[i]);
                             }
                         }
                         else
@@ -255,11 +260,15 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     }
                     else if (statementNode is AssignmentNode assignmentNode)
                     {
-                        //TODO: Add checking for assignment of different types (e.g. integer to boolean)
-                        if (!ResolveExpressionType(assignmentNode.Value).Equals(ResolveExpressionType(assignmentNode.Target)))
+                        Symbol? targetSymbol = LookupSymbol(assignmentNode.Target.BaseName);
+                        if (targetSymbol != null && targetSymbol is VariableSymbol {IsReadOnly: true})
                         {
-                            throw new AnalyzerException("Type mismatch", assignmentNode.Line, assignmentNode.Column);
+                            throw new AnalyzerException("Can not perform assigments on iterators", assignmentNode.Line, assignmentNode.Column);
                         }
+
+                        TypeInfo targetType = ResolveExpressionType(assignmentNode.Target);
+                        TypeInfo valueType = ResolveExpressionType(assignmentNode.Value);
+                        CheckAssignmentPossibility(targetType, valueType, assignmentNode.Value);
                     }
                     else if (statementNode is PrintStatementNode printStatementNode)
                     {
@@ -284,6 +293,12 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     {
                         throw new AnalyzerException($"Routine '{routineDeclarationNode.Name}' already exists in the scope", routineDeclarationNode.Line, routineDeclarationNode.Column);
                     }
+
+                    Scope.Peek()[routineDeclarationNode.Name] = new RoutineSymbol(routineDeclarationNode.Name,
+                        routineDeclarationNode.ReturnType == null
+                        ? null
+                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), convertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
+                    return;
                 } else
                 {
                     throw new AnalyzerException("Something went terribely wrong with routine declarations", routineDeclarationNode.Line, routineDeclarationNode.Column);
@@ -328,15 +343,12 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 variableType = ResolveTypeFromTypeNodeReference(variableDeclarationNode.VarType);
                 if (variableDeclarationNode.Initializer != null)
                 {
-                    if (!variableType.Equals(ResolveExpressionType(variableDeclarationNode.Initializer)))
-                    {
-                        throw new AnalyzerException("Invalid initializer type", variableDeclarationNode.Initializer.Line, variableDeclarationNode.Initializer.Column);
-                    }
+                    CheckAssignmentPossibility(variableType, ResolveExpressionType(variableDeclarationNode.Initializer), variableDeclarationNode.Initializer);
                 }
             }
 
             Scope.Peek().Add(variableDeclarationNode.Name,
-                 new VariableSymbol(variableDeclarationNode.Name, variableType, variableDeclarationNode.Initializer != null));
+                 new VariableSymbol(variableDeclarationNode.Name, variableType));
         }
 
         private void AddTypeDeclaration(TypeDeclarationNode typeDeclarationNode)
@@ -745,6 +757,53 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 }
             }
             return null;
+        }
+    
+        private void CheckAssignmentPossibility(TypeInfo target, TypeInfo value, ExpressionNode valueExpression)
+        {
+            if (target.Equals(value)) 
+            {
+                return;
+            }
+
+            if (target is PrimitiveTypeInfo { Type: PrimitiveType.Boolean }
+                && value is PrimitiveTypeInfo { Type: PrimitiveType.Integer })
+            {
+                if (TryEvaluateExpression(valueExpression, out object result) && result is int i)
+                {
+                    if (i != 0 || i != 1) throw new AnalyzerException("Can not assign integers other than '1' and '0' to boolean variables", valueExpression.Line, valueExpression.Column);
+                }
+                return;
+            }
+
+
+            if (target is PrimitiveTypeInfo { Type: PrimitiveType.Boolean }
+                && value is PrimitiveTypeInfo { Type: PrimitiveType.Real })
+            {
+                throw new AnalyzerException("Can not assign real values to boolean variables", valueExpression.Line, valueExpression.Column);
+            }
+
+            if ((target is PrimitiveTypeInfo { Type: PrimitiveType.Integer } 
+                && value is PrimitiveTypeInfo { Type: PrimitiveType.Real })
+
+                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Real } 
+                && value is PrimitiveTypeInfo { Type: PrimitiveType.Integer })
+
+                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Integer } 
+                && value is PrimitiveTypeInfo { Type: PrimitiveType.Boolean })
+
+                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Real } 
+                && value is PrimitiveTypeInfo { Type: PrimitiveType.Boolean })
+                )
+            {
+                return;
+            }
+            
+
+            if (!target.Equals(value))
+            {
+                throw new AnalyzerException($"Type mismatch. Expected {target}. Got {value}", valueExpression.Line, valueExpression.Column);
+            }
         }
     }
 }

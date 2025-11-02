@@ -7,7 +7,7 @@ end
 routine testOr() : boolean is
     var x : boolean is true
     var y : boolean is false
-    return x or z
+    return x or y
 end
 
 routine testXor() is

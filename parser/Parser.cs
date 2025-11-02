@@ -225,13 +225,18 @@ namespace ImperativeLang.SyntaxAnalyzer
             MatchAdvance(TokenType.In, "Expected 'in'");
             ExpressionNode rangeStart = ParseExpression();
             RangeNode rangeNode = new RangeNode(rangeStart);
+            bool isArrayTraversal = false;
             if (Match(TokenType.DoubleDot))
             {
                 ExpressionNode rangeEnd = ParseExpression();
                 rangeNode.End = rangeEnd;
             }
+            else
+            {
+                isArrayTraversal = true;
+            }
             bool reverse = Match(TokenType.Reverse);
-            bool isArrayTraversal = Match(TokenType.Loop);
+            MatchAdvance(TokenType.Loop, "Expected 'loop' keyword");
             SkipSeparator();
             List<Node> body = ParseSimpleBody();
             return new ForLoopNode(iteratorToken.getLexeme(), rangeNode, reverse, isArrayTraversal, body);
@@ -463,14 +468,14 @@ namespace ImperativeLang.SyntaxAnalyzer
 
         ModifiablePrimaryNode ParseModifiablePrimary(Token identifier)
         {
-            var node = new ModifiablePrimaryNode(identifier.getLexeme());
+            var node = new ModifiablePrimaryNode(identifier.getLexeme(), identifier.getLine(), identifier.getColumn());
 
             while (true)
             {
                 if (Match(TokenType.Dot))
                 {
                     Token fieldToken = MatchAdvance(TokenType.Identifier, "Expected an identifier");
-                    node.AccessPart.Add(new FieldAccess(fieldToken.getLexeme(), fieldToken.getLine(), fieldToken.getColumn()));
+                    node.AccessPart.Add(new FieldAccess(fieldToken.getLexeme(), identifier.getLine(), identifier.getColumn()));
                 }
                 else if (Match(TokenType.LBracket))
                 {

@@ -79,8 +79,10 @@
 //     end
 // end
 
-// 12) use of undeclared identifier
-routine UseUndeclaredIdentifier() is
-    var a: integer is 1;
-    b := a + 2                          // ERROR: 'b' is undeclared
-end
+// // 12) use of undeclared identifier
+// routine UseUndeclaredIdentifier() is
+//     var a: integer is 1;
+//     b := a + 2                          // ERROR: 'b' is undeclared
+// end
+
+

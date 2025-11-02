@@ -77,7 +77,7 @@ end
 routine ForwardDemo(x : integer) : integer
 
 // Routine 11: forward definition
-routine ForwardDemo(x : integer) is
+routine ForwardDemo(x : integer) : integer is
     return Factorial(x) + Add(x, 2)
 end
 
