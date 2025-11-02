@@ -86,8 +86,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 Scope.Peek().Add(symbol.Name, symbol);
             }
 
-            foreach (var node in body)
+            for (int i = 0; i < body.Count; i++)
             {
+                var node = body[i];
                 if (hasGuaranteedReturn) break;
 
                 if (node is DeclarationNode declarationNode)
@@ -137,6 +138,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 }
                                 if (TryEvaluateExpression(forLoopNode.Range.Start, out object rangeStartNum) && TryEvaluateExpression(forLoopNode.Range.End, out object rangeEndNum))
                                 {
+                                    forLoopNode.Range.Start = new LiteralNode((int)rangeStartNum, PrimitiveType.Integer, forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
+                                    forLoopNode.Range.Start = new LiteralNode((int)rangeEndNum, PrimitiveType.Integer, forLoopNode.Range.End.Line, forLoopNode.Range.End.Column);
                                     if (!forLoopNode.Reverse && (int)rangeEndNum < (int)rangeStartNum)
                                     {
                                         System.Console.WriteLine($"Warning: Range end is smaller than range start at line {forLoopNode.Line}, column {forLoopNode.Column}");
@@ -178,7 +181,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 if (condition is bool b)
                                 {
-                                    if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Line}, column: {whileLoopNode.Column}"); isInfinite = true;
+                                    whileLoopNode.Condition = new LiteralNode(b, PrimitiveType.Boolean, whileLoopNode.Condition.Line, whileLoopNode.Condition.Column);
+                                    if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Condition.Line}, column: {whileLoopNode.Condition.Column}"); isInfinite = true;
                                 }
                                 else
                                 {
@@ -203,10 +207,19 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 throw new AnalyzerException("Condition should be bool", ifStatementNode.Line, ifStatementNode.Column);
                             }
 
+                            bool thenReturns = TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody, returnType);
+                            bool elseReturns = ifStatementNode.ElseBody != null &&
+                                               ifStatementNode.ElseBody.Count > 0 &&
+                                               TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody, returnType);
+
+                            if (thenReturns && elseReturns) hasGuaranteedReturn = true;
+
                             if (TryEvaluateExpression(ifStatementNode.Condition, out object condition))
                             {
                                 if (condition is bool b)
                                 {
+                                    if (b) ifStatementNode.ElseBody = new List<Node>(); else ifStatementNode.ThenBody = new List<Node>();
+                                    ifStatementNode.Condition = new LiteralNode(b, PrimitiveType.Boolean, ifStatementNode.Condition.Line, ifStatementNode.Condition.Column);
                                     System.Console.WriteLine($"Warning: Condition is always {(b ? "True" : "False")} at line: {ifStatementNode.Line}, column: {ifStatementNode.Column}");
                                 }
                                 else
@@ -214,13 +227,6 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                     throw new AnalyzerException("Condition is not being evaluated to boolean value", ifStatementNode.Line, ifStatementNode.Column);
                                 }
                             }
-
-                            bool thenReturns = TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody, returnType);
-                            bool elseReturns = ifStatementNode.ElseBody != null &&
-                                               ifStatementNode.ElseBody.Count > 0 &&
-                                               TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody, returnType);
-
-                            if (thenReturns && elseReturns) hasGuaranteedReturn = true;
                         }
                         else
                         {
@@ -238,9 +244,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 throw new AnalyzerException($"Expected {routineSymbol.Parameters.Count} arguments. Got {routineCallStatementNode.Call.Arguments.Count}.", routineCallStatementNode.Line, routineCallStatementNode.Column);
                             }
 
-                            for (int i = 0; i < routineSymbol.Parameters.Count; i++)
+                            for (int j = 0; j < routineSymbol.Parameters.Count; j++)
                             {
-                                CheckAssignmentPossibility(routineSymbol.Parameters[i].Type, ResolveExpressionType(routineCallStatementNode.Call.Arguments[i]), routineCallStatementNode.Call.Arguments[i]);
+                                CheckAssignmentPossibility(routineSymbol.Parameters[j].Type, ResolveExpressionType(routineCallStatementNode.Call.Arguments[j]), routineCallStatementNode.Call.Arguments[j]);
                             }
                         }
                         else
@@ -270,9 +276,10 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             }
                         }
 
-                        if (!ReferenceEquals(node, body.Last()))
+                        if (i + 1 < body.Count)
                         {
                             System.Console.WriteLine($"Warning: Unreachable code after return statement at line: {returnStatementNode.Line}, column: {returnStatementNode.Column}");
+                            body.RemoveRange(i + 1, body.Count - (i + 1));
                         }
                         hasGuaranteedReturn = true;
                         break;
@@ -524,6 +531,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 if (value is int i)
                                 {
+                                    array.Index = new LiteralNode(value, PrimitiveType.Integer, array.Index.Line, array.Index.Column);
                                     if (i > arrayType.Size)
                                     {
                                         throw new AnalyzerException("Index out of bounds", array.Line, array.Column);

@@ -2,3 +2,6 @@ type int is integer
 
 var x : int
 
+routine test() is
+    print 5 + 3
+end
