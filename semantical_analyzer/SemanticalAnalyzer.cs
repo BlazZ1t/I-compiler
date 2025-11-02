@@ -45,7 +45,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     if (routineDeclaration.Body is BlockRoutineBodyNode blockRoutineBodyNode)
                     {
-                        TraverseBody(routineSymbol.Parameters, blockRoutineBodyNode.Body, routineSymbol.ReturnType);
+                        bool hasReturn = TraverseBody(routineSymbol.Parameters, blockRoutineBodyNode.Body, routineSymbol.ReturnType);
+                        if (routineDeclaration.ReturnType != null && !hasReturn)
+                        {
+                            throw new AnalyzerException("Not all code paths have a return value", routineDeclaration.Line, routineDeclaration.Column);
+                        }
                     }
                     else if (routineDeclaration.Body is ExpressionRoutineBodyNode expressionRoutineBodyNode)
                     {
@@ -72,9 +76,10 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
         }
 
-        private void TraverseBody(List<VariableSymbol> declaredSymbols, List<Node> body, TypeInfo? returnType = null)
+        private bool TraverseBody(List<VariableSymbol> declaredSymbols, List<Node> body, TypeInfo? returnType = null)
         //TODO: Add checking for return statements in each code path where applicable (where returnType != null)
         {
+            bool hasGuaranteedReturn = false;
             Scope.Push(new Dictionary<string, Symbol>());
             foreach (var symbol in declaredSymbols)
             {
@@ -83,6 +88,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
             foreach (var node in body)
             {
+                if (hasGuaranteedReturn) break;
+
                 if (node is DeclarationNode declarationNode)
                 {
                     if (declarationNode is VariableDeclarationNode variableDeclarationNode)
@@ -101,6 +108,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     if (statementNode is ForLoopNode forLoopNode)
                     {
+                        bool canExecute = true;
                         TypeInfo iteratorType;
                         if (forLoopNode.IsArrayTraversal)
                         {
@@ -109,6 +117,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
                             }
+                            canExecute = false;
                             iteratorType = rangeArray;
                         }
                         else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
@@ -131,11 +140,17 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                     if (!forLoopNode.Reverse && (int)rangeEndNum < (int)rangeStartNum)
                                     {
                                         System.Console.WriteLine($"Warning: Range end is smaller than range start at line {forLoopNode.Line}, column {forLoopNode.Column}");
+                                        canExecute = false;
                                     }
                                     if (forLoopNode.Reverse && (int)rangeEndNum > (int)rangeStartNum)
                                     {
                                         System.Console.WriteLine($"Warning: Range end is bigger than range start at line {forLoopNode.Line}, column {forLoopNode.Column}");
+                                        canExecute = false;
                                     }
+                                }
+                                else
+                                {
+                                    canExecute = false;
                                 }
                             }
                             iteratorType = new PrimitiveTypeInfo(PrimitiveType.Integer);
@@ -146,10 +161,12 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             throw new AnalyzerException("Range value is of wrong type", forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
                         }
 
-                        TraverseBody(new List<VariableSymbol>([new VariableSymbol(forLoopNode.Iterator, iteratorType, true)]), forLoopNode.Body);
+                        bool bodyReturns = TraverseBody(new List<VariableSymbol>([new VariableSymbol(forLoopNode.Iterator, iteratorType, true)]), forLoopNode.Body);
+                        hasGuaranteedReturn = bodyReturns && canExecute;
                     }
                     else if (statementNode is WhileLoopNode whileLoopNode)
                     {
+                        bool isInfinite = false;
                         if (ResolveExpressionType(whileLoopNode.Condition) is PrimitiveTypeInfo conditionType)
                         {
                             if (conditionType.Type != PrimitiveType.Boolean)
@@ -161,7 +178,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 if (condition is bool b)
                                 {
-                                    if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Line}, column: {whileLoopNode.Column}");
+                                    if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Line}, column: {whileLoopNode.Column}"); isInfinite = true;
                                 }
                                 else
                                 {
@@ -169,7 +186,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 }
                             }
 
-                            TraverseBody(new List<VariableSymbol>(), whileLoopNode.Body, returnType);
+                            bool bodyReturns = TraverseBody(new List<VariableSymbol>(), whileLoopNode.Body, returnType);
+                            hasGuaranteedReturn = isInfinite && bodyReturns;
                         }
                         else
                         {
@@ -196,12 +214,13 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                     throw new AnalyzerException("Condition is not being evaluated to boolean value", ifStatementNode.Line, ifStatementNode.Column);
                                 }
                             }
-                            TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody, returnType);
 
-                            if (ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count != 0)
-                            {
-                                TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody, returnType);
-                            }
+                            bool thenReturns = TraverseBody(new List<VariableSymbol>(), ifStatementNode.ThenBody, returnType);
+                            bool elseReturns = ifStatementNode.ElseBody != null &&
+                                               ifStatementNode.ElseBody.Count > 0 &&
+                                               TraverseBody(new List<VariableSymbol>(), ifStatementNode.ElseBody, returnType);
+
+                            if (thenReturns && elseReturns) hasGuaranteedReturn = true;
                         }
                         else
                         {
@@ -255,7 +274,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         {
                             System.Console.WriteLine($"Warning: Unreachable code after return statement at line: {returnStatementNode.Line}, column: {returnStatementNode.Column}");
                         }
-
+                        hasGuaranteedReturn = true;
                         break;
                     }
                     else if (statementNode is AssignmentNode assignmentNode)
@@ -281,6 +300,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
 
             Scope.Pop();
+            return hasGuaranteedReturn;
         }
 
         private void AddRoutineDeclaration(RoutineDeclarationNode routineDeclarationNode)
@@ -758,10 +778,10 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
             return null;
         }
-    
+
         private void CheckAssignmentPossibility(TypeInfo target, TypeInfo value, ExpressionNode valueExpression)
         {
-            if (target.Equals(value)) 
+            if (target.Equals(value))
             {
                 return;
             }
@@ -783,22 +803,22 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 throw new AnalyzerException("Can not assign real values to boolean variables", valueExpression.Line, valueExpression.Column);
             }
 
-            if ((target is PrimitiveTypeInfo { Type: PrimitiveType.Integer } 
+            if ((target is PrimitiveTypeInfo { Type: PrimitiveType.Integer }
                 && value is PrimitiveTypeInfo { Type: PrimitiveType.Real })
 
-                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Real } 
+                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Real }
                 && value is PrimitiveTypeInfo { Type: PrimitiveType.Integer })
 
-                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Integer } 
+                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Integer }
                 && value is PrimitiveTypeInfo { Type: PrimitiveType.Boolean })
 
-                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Real } 
+                || (target is PrimitiveTypeInfo { Type: PrimitiveType.Real }
                 && value is PrimitiveTypeInfo { Type: PrimitiveType.Boolean })
                 )
             {
                 return;
             }
-            
+
 
             if (!target.Equals(value))
             {

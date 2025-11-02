@@ -101,19 +101,19 @@ namespace ImperativeLang.SyntaxAnalyzer
             if (Check(TokenType.Semicolon) || Check(TokenType.NewLine))
             {
                 SkipSeparator();
-                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType);
+                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, line: identifierToken.getLine(), column: identifierToken.getColumn());
             }
             else if (Match(TokenType.RoutineExpression))
             {
                 ExpressionNode expression = ParseExpression();
                 SkipSeparator();
-                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, new ExpressionRoutineBodyNode(expression));
+                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, new ExpressionRoutineBodyNode(expression), line: identifierToken.getLine(), column: identifierToken.getColumn());
             }
             else if (Match(TokenType.Is))
             {
                 SkipSeparator();
                 List<Node> body = ParseSimpleBody();
-                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, new BlockRoutineBodyNode(body));
+                return new RoutineDeclarationNode(identifierToken.getLexeme(), parameters, returnType, new BlockRoutineBodyNode(body), line: identifierToken.getLine(), column: identifierToken.getColumn());
             }
             else
             {

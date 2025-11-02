@@ -85,4 +85,11 @@
 //     b := a + 2                          // ERROR: 'b' is undeclared
 // end
 
+// 13) not all paths return a value
+routine NotAllPaths(b : boolean) : boolean is
+    while b loop
+        return b
+    end
+end
+
 
