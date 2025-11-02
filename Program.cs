@@ -11,7 +11,7 @@ namespace ImperativeLang
         {
             if (args.Length == 0)
             {
-                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/chatgpt_generated.impp");
+                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/test.impp");
                 return;
             }
 

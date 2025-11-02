@@ -57,8 +57,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         foreach (var symbol in routineSymbol.Parameters)
                         {
                             Scope.Peek().Add(symbol.Name, symbol);
-                        }   
+                        }
                         TypeInfo expressionType = ResolveExpressionType(expressionRoutineBodyNode.Expression);
+                        expressionRoutineBodyNode.Expression = TryFoldExpression(expressionRoutineBodyNode.Expression);
                         if (routineSymbol.ReturnType != null)
                         {
                             if (!expressionType.Equals(routineSymbol.ReturnType))
@@ -77,7 +78,6 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         }
 
         private bool TraverseBody(List<VariableSymbol> declaredSymbols, List<Node> body, TypeInfo? returnType = null)
-        //TODO: Add checking for return statements in each code path where applicable (where returnType != null)
         {
             bool hasGuaranteedReturn = false;
             Scope.Push(new Dictionary<string, Symbol>());
@@ -114,6 +114,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         if (forLoopNode.IsArrayTraversal)
                         {
                             TypeInfo rangeArray = ResolveExpressionType(forLoopNode.Range.Start);
+                            forLoopNode.Range.Start = TryFoldExpression(forLoopNode.Range.Start);
                             if (rangeArray is not ArrayTypeInfo)
                             {
                                 throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
@@ -123,6 +124,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         }
                         else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
                         {
+                            forLoopNode.Range.Start = TryFoldExpression(forLoopNode.Range.Start);
                             if (rangeStart.Type != PrimitiveType.Integer)
                             {
                                 throw new AnalyzerException("Range values should be integers");
@@ -131,6 +133,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 if (ResolveExpressionType(forLoopNode.Range.End) is PrimitiveTypeInfo rangeEnd)
                                 {
+                                    forLoopNode.Range.End = TryFoldExpression(forLoopNode.Range.End);
                                     if (rangeEnd.Type != PrimitiveType.Integer)
                                     {
                                         throw new AnalyzerException("Range values should be integers");
@@ -172,6 +175,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         bool isInfinite = false;
                         if (ResolveExpressionType(whileLoopNode.Condition) is PrimitiveTypeInfo conditionType)
                         {
+                            whileLoopNode.Condition = TryFoldExpression(whileLoopNode.Condition);
                             if (conditionType.Type != PrimitiveType.Boolean)
                             {
                                 throw new AnalyzerException("Condition should be bool", whileLoopNode.Line, whileLoopNode.Column);
@@ -202,6 +206,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     {
                         if (ResolveExpressionType(ifStatementNode.Condition) is PrimitiveTypeInfo conditionType)
                         {
+                            ifStatementNode.Condition = TryFoldExpression(ifStatementNode.Condition);
                             if (conditionType.Type != PrimitiveType.Boolean)
                             {
                                 throw new AnalyzerException("Condition should be bool", ifStatementNode.Line, ifStatementNode.Column);
@@ -247,6 +252,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             for (int j = 0; j < routineSymbol.Parameters.Count; j++)
                             {
                                 CheckAssignmentPossibility(routineSymbol.Parameters[j].Type, ResolveExpressionType(routineCallStatementNode.Call.Arguments[j]), routineCallStatementNode.Call.Arguments[j]);
+                                routineCallStatementNode.Call.Arguments[j] = TryFoldExpression(routineCallStatementNode.Call.Arguments[j]);
                             }
                         }
                         else
@@ -269,7 +275,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         if (returnStatementNode.Value != null && returnType != null)
                         {
                             TypeInfo returnInfo = ResolveExpressionType(returnStatementNode.Value);
-
+                            returnStatementNode.Value = TryFoldExpression(returnStatementNode.Value);
                             if (!returnInfo.Equals(returnType))
                             {
                                 throw new AnalyzerException("Invalid return value", returnStatementNode.Value.Line, returnStatementNode.Value.Column);
@@ -294,13 +300,17 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
                         TypeInfo targetType = ResolveExpressionType(assignmentNode.Target);
                         TypeInfo valueType = ResolveExpressionType(assignmentNode.Value);
+                        assignmentNode.Value = TryFoldExpression(assignmentNode.Target);
                         CheckAssignmentPossibility(targetType, valueType, assignmentNode.Value);
                     }
                     else if (statementNode is PrintStatementNode printStatementNode)
                     {
-                        foreach (var expression in printStatementNode.Expressions)
+                        for (int j = 0; j < printStatementNode.Expressions.Count; j++)
                         {
+                            var expression = printStatementNode.Expressions[j];
                             ResolveExpressionType(expression);
+                            printStatementNode.Expressions[j] = TryFoldExpression(printStatementNode.Expressions[j]);
+
                         }
                     }
                 }
@@ -364,6 +374,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             if (variableDeclarationNode.VarType == null)
             {
                 variableType = ResolveExpressionType(variableDeclarationNode.Initializer!);
+                variableDeclarationNode.Initializer = TryFoldExpression(variableDeclarationNode.Initializer!);
             }
             else
             {
@@ -371,6 +382,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 if (variableDeclarationNode.Initializer != null)
                 {
                     CheckAssignmentPossibility(variableType, ResolveExpressionType(variableDeclarationNode.Initializer), variableDeclarationNode.Initializer);
+                    variableDeclarationNode.Initializer = TryFoldExpression(variableDeclarationNode.Initializer);
                 }
             }
 
@@ -832,6 +844,22 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 throw new AnalyzerException($"Type mismatch. Expected {target}. Got {value}", valueExpression.Line, valueExpression.Column);
             }
+        }
+    
+        private ExpressionNode TryFoldExpression(ExpressionNode expression)
+        {
+            if (TryEvaluateExpression(expression, out object foldedResult))
+            {
+                return foldedResult switch
+                {
+                    int i => new LiteralNode(i, PrimitiveType.Integer, expression.Line, expression.Column),
+                    double d => new LiteralNode(d, PrimitiveType.Real, expression.Line, expression.Column),
+                    bool b => new LiteralNode(b, PrimitiveType.Boolean, expression.Line, expression.Column),
+                    _ => expression
+                };
+            }
+
+            return expression;
         }
     }
 }

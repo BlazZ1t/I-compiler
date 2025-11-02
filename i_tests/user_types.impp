@@ -42,5 +42,6 @@ end
 
 routine typeAlias() : integer is
     type int is integer
-    var x : int
+    var x : int is 5
+    return x
 end
