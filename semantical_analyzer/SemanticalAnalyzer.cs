@@ -45,6 +45,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     if (routineDeclaration.Body is BlockRoutineBodyNode blockRoutineBodyNode)
                     {
+                        // Traverse the block body and check whether every path returns
                         bool hasReturn = TraverseBody(routineSymbol.Parameters, blockRoutineBodyNode.Body, routineSymbol.ReturnType);
                         if (routineDeclaration.ReturnType != null && !hasReturn)
                         {
@@ -53,11 +54,13 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     }
                     else if (routineDeclaration.Body is ExpressionRoutineBodyNode expressionRoutineBodyNode)
                     {
+                        // Expression-bodied routine: create a temporary scope with parameters
                         Scope.Push(new Dictionary<string, Symbol>());
                         foreach (var symbol in routineSymbol.Parameters)
                         {
                             Scope.Peek().Add(symbol.Name, symbol);
                         }
+                        // Resolve and constant-fold the expression, then check the return type
                         TypeInfo expressionType = ResolveExpressionType(expressionRoutineBodyNode.Expression);
                         expressionRoutineBodyNode.Expression = TryFoldExpression(expressionRoutineBodyNode.Expression);
                         if (routineSymbol.ReturnType != null)
@@ -77,6 +80,10 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
         }
 
+        // Walk a sequence of statements/declarations (a routine or block body).
+        // declaredSymbols: parameters/locals visible in this body.
+        // returnType: expected return type for this body (null if none allowed).
+        // Returns true if every execution path is guaranteed to return.
         private bool TraverseBody(List<VariableSymbol> declaredSymbols, List<Node> body, TypeInfo? returnType = null)
         {
             bool hasGuaranteedReturn = false;
@@ -89,7 +96,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             for (int i = 0; i < body.Count; i++)
             {
                 var node = body[i];
-                if (hasGuaranteedReturn) break;
+                if (hasGuaranteedReturn) break; // stop walking after a guaranteed return
 
                 if (node is DeclarationNode declarationNode)
                 {
@@ -109,6 +116,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     if (statementNode is ForLoopNode forLoopNode)
                     {
+                        // canExecute: whether the loop is possibly non-empty (range/order checks)
                         bool canExecute = true;
                         TypeInfo iteratorType;
                         if (forLoopNode.IsArrayTraversal)
@@ -119,6 +127,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
                             }
+                            // array traversal may be empty depending on runtime size; conservatively mark as not guaranteed
                             canExecute = false;
                             iteratorType = rangeArray;
                         }
@@ -143,6 +152,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 {
                                     forLoopNode.Range.Start = new LiteralNode((int)rangeStartNum, PrimitiveType.Integer, forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
                                     forLoopNode.Range.Start = new LiteralNode((int)rangeEndNum, PrimitiveType.Integer, forLoopNode.Range.End.Line, forLoopNode.Range.End.Column);
+                                    // If range is known at compile-time, warn when it cannot iterate
                                     if (!forLoopNode.Reverse && (int)rangeEndNum < (int)rangeStartNum)
                                     {
                                         System.Console.WriteLine($"Warning: Range end is smaller than range start at line {forLoopNode.Line}, column {forLoopNode.Column}");
@@ -167,11 +177,14 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             throw new AnalyzerException("Range value is of wrong type", forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
                         }
 
+                        // Create iterator symbol (read-only) and traverse the loop body
                         bool bodyReturns = TraverseBody(new List<VariableSymbol>([new VariableSymbol(forLoopNode.Iterator, iteratorType, true)]), forLoopNode.Body);
+                        // Loop guarantees return only if body always returns and the loop is provably enterable
                         hasGuaranteedReturn = bodyReturns && canExecute;
                     }
                     else if (statementNode is WhileLoopNode whileLoopNode)
                     {
+                        // Track if loop condition is a compile-time true (infinite)
                         bool isInfinite = false;
                         if (ResolveExpressionType(whileLoopNode.Condition) is PrimitiveTypeInfo conditionType)
                         {
@@ -185,8 +198,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 if (condition is bool b)
                                 {
+                                    // Replace condition with folded literal and warn about infinite loops
                                     whileLoopNode.Condition = new LiteralNode(b, PrimitiveType.Boolean, whileLoopNode.Condition.Line, whileLoopNode.Condition.Column);
-                                    if (b) System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Condition.Line}, column: {whileLoopNode.Condition.Column}"); isInfinite = true;
+                                    if (b) { System.Console.WriteLine($"Warning: Infinite while loop at line: {whileLoopNode.Condition.Line}, column: {whileLoopNode.Condition.Column}"); isInfinite = true; }
                                 }
                                 else
                                 {
@@ -223,6 +237,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 if (condition is bool b)
                                 {
+                                    // If condition is constant, remove the unreachable branch and warn
                                     if (b) ifStatementNode.ElseBody = new List<Node>(); else ifStatementNode.ThenBody = new List<Node>();
                                     ifStatementNode.Condition = new LiteralNode(b, PrimitiveType.Boolean, ifStatementNode.Condition.Line, ifStatementNode.Condition.Column);
                                     System.Console.WriteLine($"Warning: Condition is always {(b ? "True" : "False")} at line: {ifStatementNode.Line}, column: {ifStatementNode.Column}");
@@ -320,7 +335,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             return hasGuaranteedReturn;
         }
 
-        private void AddRoutineDeclaration(RoutineDeclarationNode routineDeclarationNode)
+    // Add or update a routine symbol in the current scope. Handles forward
+    // declarations by replacing placeholders and keeps signature information.
+    private void AddRoutineDeclaration(RoutineDeclarationNode routineDeclarationNode)
         {
             if (Scope.Peek().ContainsKey(routineDeclarationNode.Name))
             {
@@ -334,7 +351,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     Scope.Peek()[routineDeclarationNode.Name] = new RoutineSymbol(routineDeclarationNode.Name,
                         routineDeclarationNode.ReturnType == null
                         ? null
-                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), convertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
+                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
                     return;
                 } else
                 {
@@ -345,10 +362,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             Scope.Peek().Add(routineDeclarationNode.Name, new RoutineSymbol(routineDeclarationNode.Name,
                 routineDeclarationNode.ReturnType == null
                 ? null
-                : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), convertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null));
+                : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null));
         }
         
-        private List<VariableSymbol> convertParameters(List<VariableDeclarationNode> variableDeclarationNodes)
+    // Convert AST parameter declarations into internal VariableSymbol list
+    private List<VariableSymbol> ConvertParameters(List<VariableDeclarationNode> variableDeclarationNodes)
         {
             List<VariableSymbol> result = new();
             foreach (var variableDeclarationNode in variableDeclarationNodes)
@@ -362,7 +380,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             return result;
         }
 
-        private void AddVariableDeclaration(VariableDeclarationNode variableDeclarationNode)
+    // Add a variable to the current scope, resolving its type from an
+    // explicit type annotation or from its initializer expression.
+    private void AddVariableDeclaration(VariableDeclarationNode variableDeclarationNode)
         {
             if (Scope.Peek().ContainsKey(variableDeclarationNode.Name))
             {
@@ -390,7 +410,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                  new VariableSymbol(variableDeclarationNode.Name, variableType));
         }
 
-        private void AddTypeDeclaration(TypeDeclarationNode typeDeclarationNode)
+    // Register a type declaration in the current scope after resolving
+    // its structure to a TypeInfo.
+    private void AddTypeDeclaration(TypeDeclarationNode typeDeclarationNode)
         {
             if (Scope.Peek().ContainsKey(typeDeclarationNode.Name))
             {
@@ -402,7 +424,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         }
 
 
-        private TypeInfo ResolveExpressionType(ExpressionNode expression)
+    // Infer the TypeInfo for the given expression node. Throws
+    // AnalyzerException on type errors or unsupported constructs.
+    private TypeInfo ResolveExpressionType(ExpressionNode expression)
         {
             if (expression is BinaryExpressionNode binaryExpression)
             {
@@ -567,7 +591,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
         }
 
-        private bool TryEvaluateExpression(ExpressionNode expression, out object value)
+    // Try to evaluate an expression at compile-time. Returns true if the
+    // expression can be folded to a constant and sets value accordingly.
+    private bool TryEvaluateExpression(ExpressionNode expression, out object value)
         {
             value = default!;
 
@@ -618,7 +644,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
         }
 
-        private bool TryEvaluateBinary(Operator op, object left, object right, out object value)
+    // Evaluate a binary operation on two constant operands. Supports
+    // numeric and boolean operators; used by constant folding.
+    private bool TryEvaluateBinary(Operator op, object left, object right, out object value)
         {
             value = default!;
 
@@ -692,7 +720,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 throw;
             }
         }
-        private TypeInfo ResolveTypeFromTypeNodeDeclarations(TypeNode node, string name)
+    // Resolve a type definition node (primitive/array/record) into a
+    // TypeInfo describing the actual type.
+    private TypeInfo ResolveTypeFromTypeNodeDeclarations(TypeNode node, string name)
         {
             switch (node)
             {
@@ -710,7 +740,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
         }
 
-        private TypeInfo ResolveTypeFromTypeNodeReference(TypeNode node)
+    // Resolve a type reference: either a primitive, a user-defined type
+    // lookup, or report an error for unexpected nodes.
+    private TypeInfo ResolveTypeFromTypeNodeReference(TypeNode node)
         {
             if (node is UserTypeNode userTypeNode)
             {
@@ -740,7 +772,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
 
 
-        private ArrayTypeInfo ResolveArrayType(ArrayTypeNode node, string name)
+    // Resolve an array type declaration, ensuring size (if present) is a
+    // compile-time positive integer and resolving the element type.
+    private ArrayTypeInfo ResolveArrayType(ArrayTypeNode node, string name)
         {
             TypeInfo elementType = ResolveTypeFromTypeNodeReference(node.ElementType);
 
@@ -769,7 +803,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             return new ArrayTypeInfo(elementType, size, name);
         }
 
-        private RecordTypeInfo ResolveRecordType(RecordTypeNode node, string name)
+    // Resolve a record type declaration into a map of field names -> types.
+    private RecordTypeInfo ResolveRecordType(RecordTypeNode node, string name)
         {
             var fields = new Dictionary<string, TypeInfo>();
 
@@ -787,6 +822,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             return new RecordTypeInfo(name, fields);
         }
 
+        // Lookup a symbol by name across nested scopes (from innermost to outer)
         private Symbol? LookupSymbol(string name)
         {
             foreach (var scope in Scope)
@@ -799,6 +835,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             return null;
         }
 
+        // Check whether a value of `value` type can be assigned to `target`.
+        // Performs special-case checks (booleans from ints, real/int coercions)
+        // and throws AnalyzerException on incompatibility.
         private void CheckAssignmentPossibility(TypeInfo target, TypeInfo value, ExpressionNode valueExpression)
         {
             if (target.Equals(value))
@@ -846,7 +885,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             }
         }
     
-        private ExpressionNode TryFoldExpression(ExpressionNode expression)
+    // Attempt to constant-fold the expression. If successful, return a
+    // corresponding LiteralNode; otherwise return the original expression.
+    private ExpressionNode TryFoldExpression(ExpressionNode expression)
         {
             if (TryEvaluateExpression(expression, out object foldedResult))
             {
