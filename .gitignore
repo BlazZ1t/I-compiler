@@ -92,3 +92,5 @@ ClientBin/
 *.publishsettings
 modulesbin/
 tempbin/
+*.il
+*.exe

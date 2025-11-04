@@ -1,7 +1,3 @@
-type int is integer
-
-var x : int
-
-routine test() is
-    print 5 + 3
+routine main(a : integer) is
+    print a
 end

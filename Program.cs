@@ -2,6 +2,8 @@
 using ImperativeLang.SyntaxAnalyzer;
 using ImperativeLang.SemanticalAnalyzerNS;
 using Newtonsoft.Json.Converters;
+using ImperativeLang.CodeGen;
+using System.Diagnostics;
 
 namespace ImperativeLang
 {
@@ -94,21 +96,49 @@ namespace ImperativeLang
                 Lexer lexer = new Lexer(File.ReadAllText(filePath));
                 List<Token> tokens = lexer.Tokenize().ToList();
                 tokens = lexer.CleanUp(tokens);
+
                 Parser parser = new Parser(tokens);
                 ProgramNode programNode = parser.getAST();
+
                 SemanticalAnalyzer semanticalAnalyzer = new SemanticalAnalyzer(programNode);
                 semanticalAnalyzer.Analyze();
 
-                if (!testing)
-                { 
-                    var settings = new JsonSerializerSettings
-                    {
-                        Formatting = Formatting.Indented
-                    };
-                    settings.Converters.Add(new StringEnumConverter());
-                    string json = JsonConvert.SerializeObject(programNode, settings);
-                    System.Console.WriteLine(json);
+                string outputPath = Path.GetFileNameWithoutExtension(filePath);
+                var codegen = new CodeGenerator(new StreamWriter($"{outputPath}.il"));
+                codegen.GenerateMSIL(programNode);
+                
+                var process = new Process();
+                process.StartInfo.FileName = "ilasm";
+                process.StartInfo.Arguments = $"\"{outputPath}.il\" /exe /out:\"{outputPath}.exe\"";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                string errors = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode == 0)
+                {
+                    System.Console.WriteLine("Done");
                 }
+                else
+                {
+                    System.Console.WriteLine("Assembly error:");
+                    System.Console.WriteLine(errors);
+                }
+
+                // if (!testing)
+                // { 
+                //     var settings = new JsonSerializerSettings
+                //     {
+                //         Formatting = Formatting.Indented
+                //     };
+                //     settings.Converters.Add(new StringEnumConverter());
+                //     string json = JsonConvert.SerializeObject(programNode, settings);
+                //     System.Console.WriteLine(json);
+                // }
             }
             catch (CompilerException e)
             {

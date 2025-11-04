@@ -383,11 +383,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             List<VariableSymbol> result = new();
             foreach (var variableDeclarationNode in variableDeclarationNodes)
             {
-                result.Add(
-                    new VariableSymbol(variableDeclarationNode.Name,
+                var variableSymbol = new VariableSymbol(variableDeclarationNode.Name,
                     ResolveTypeFromTypeNodeReference(variableDeclarationNode.VarType!),
-                    variableDeclarationNode.Initializer != null)
-                );
+                    variableDeclarationNode.Initializer != null);
+                variableDeclarationNode.VariableSymbol = variableSymbol;
+                result.Add(variableSymbol);
             }
             return result;
         }
