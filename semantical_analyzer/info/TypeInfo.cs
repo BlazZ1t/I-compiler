@@ -34,13 +34,13 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
     class ArrayTypeInfo : TypeInfo
     {
-        public TypeInfo Type { get; set; }
+        public TypeInfo ElementType { get; set; }
         public int Size { get; set; }
         public string Name { get; set; }
 
         public ArrayTypeInfo(TypeInfo type, int size, string name)
         {
-            Type = type;
+            ElementType = type;
             Size = size;
             Name = name;
         }
@@ -49,10 +49,10 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         {
             return obj is ArrayTypeInfo other &&
                 Size == other.Size &&
-                Type.Equals(other.Type);
+                ElementType.Equals(other.ElementType) && Name == other.Name;
         }
 
-        public override int GetHashCode() => HashCode.Combine(Type, Size);
+        public override int GetHashCode() => HashCode.Combine(ElementType, Size, Name);
 
         public override string ToString()
         {

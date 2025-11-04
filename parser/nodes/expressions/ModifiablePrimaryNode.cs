@@ -1,3 +1,5 @@
+using ImperativeLang.SemanticalAnalyzerNS;
+
 namespace ImperativeLang.SyntaxAnalyzer
 {
     /// <summary>
@@ -6,9 +8,9 @@ namespace ImperativeLang.SyntaxAnalyzer
     class ModifiablePrimaryNode : ExpressionNode
     {
         public string BaseName { get; set; }
+        public VariableSymbol? VariableSymbol { get; set; }
         public List<AccessPart> AccessPart { get; set; } = new();
-
-        public ModifiablePrimaryNode(string baseName, int line = 0, int column = 0) : base(line, column)
+        public ModifiablePrimaryNode(string baseName, int line = 0, int column = 0, ImperativeLang.SemanticalAnalyzerNS.TypeInfo? resolvedType = null) : base(line, column, resolvedType)
         {
             BaseName = baseName;
         }

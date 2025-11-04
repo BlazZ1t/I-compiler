@@ -1,3 +1,5 @@
+using ImperativeLang.SemanticalAnalyzerNS;
+
 namespace ImperativeLang.SyntaxAnalyzer {
     /// <summary>
     /// Any variable declaration
@@ -5,6 +7,7 @@ namespace ImperativeLang.SyntaxAnalyzer {
     class VariableDeclarationNode : DeclarationNode
     {
         public string Name { get; set; }
+        public VariableSymbol? VariableSymbol { get; set; }
         public TypeNode? VarType { get; set; }
         public ExpressionNode? Initializer { get; set; }
 

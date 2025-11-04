@@ -1,3 +1,5 @@
+using ImperativeLang.SemanticalAnalyzerNS;
+
 namespace ImperativeLang.SyntaxAnalyzer
 {
     /// <summary>
@@ -6,6 +8,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     class RoutineDeclarationNode : DeclarationNode
     {
         public string Name { get; set; }
+        public RoutineSymbol? RoutineSymbol { get; set; }
         public List<VariableDeclarationNode> Parameters { get; set; } = new();
         public TypeNode? ReturnType { get; set; }
         public RoutineBodyNode? Body { get; set; }

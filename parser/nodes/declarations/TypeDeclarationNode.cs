@@ -1,3 +1,5 @@
+using ImperativeLang.SemanticalAnalyzerNS;
+
 namespace ImperativeLang.SyntaxAnalyzer
 {
     /// <summary>
@@ -10,6 +12,7 @@ namespace ImperativeLang.SyntaxAnalyzer
     class TypeDeclarationNode : DeclarationNode
     {
         public string Name { get; set; }
+        public TypeSymbol? TypeSymbol { get; set; }
         public TypeNode Type { get; set; }
 
         public TypeDeclarationNode(string name, TypeNode type, int line = 0, int column = 0) : base(line, column)

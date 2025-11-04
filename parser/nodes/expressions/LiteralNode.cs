@@ -8,7 +8,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         public object Value { get; set; }
         public PrimitiveType Type;
 
-        public LiteralNode(object Value, PrimitiveType type, int line = 0, int column = 0) : base(line, column)
+        public LiteralNode(object Value, PrimitiveType type, int line = 0, int column = 0, ImperativeLang.SemanticalAnalyzerNS.TypeInfo? resolvedType = null) : base(line, column, resolvedType)
         {
             this.Value = Value;
             Type = type;

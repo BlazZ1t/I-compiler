@@ -15,8 +15,7 @@ namespace ImperativeLang.SyntaxAnalyzer {
     {
         public UnaryOperator Operator { get; set; }
         public ExpressionNode Operand { get; set; }
-
-        public UnaryExpressionNode(UnaryOperator Operator, ExpressionNode operand, int line = 0, int column = 0) : base(line, column)
+        public UnaryExpressionNode(UnaryOperator Operator, ExpressionNode operand, int line = 0, int column = 0, ImperativeLang.SemanticalAnalyzerNS.TypeInfo? resolvedType = null) : base(line, column, resolvedType)
         {
             this.Operator = Operator;
             Operand = operand;

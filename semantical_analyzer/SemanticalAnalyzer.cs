@@ -63,6 +63,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         // Resolve and constant-fold the expression, then check the return type
                         TypeInfo expressionType = ResolveExpressionType(expressionRoutineBodyNode.Expression);
                         expressionRoutineBodyNode.Expression = TryFoldExpression(expressionRoutineBodyNode.Expression);
+                        expressionRoutineBodyNode.Expression.ResolvedType = expressionType;
                         if (routineSymbol.ReturnType != null)
                         {
                             if (!expressionType.Equals(routineSymbol.ReturnType))
@@ -123,6 +124,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         {
                             TypeInfo rangeArray = ResolveExpressionType(forLoopNode.Range.Start);
                             forLoopNode.Range.Start = TryFoldExpression(forLoopNode.Range.Start);
+                            forLoopNode.Range.Start.ResolvedType = rangeArray;
                             if (rangeArray is not ArrayTypeInfo)
                             {
                                 throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
@@ -134,6 +136,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
                         {
                             forLoopNode.Range.Start = TryFoldExpression(forLoopNode.Range.Start);
+                            forLoopNode.Range.Start.ResolvedType = rangeStart;
                             if (rangeStart.Type != PrimitiveType.Integer)
                             {
                                 throw new AnalyzerException("Range values should be integers");
@@ -143,6 +146,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 if (ResolveExpressionType(forLoopNode.Range.End) is PrimitiveTypeInfo rangeEnd)
                                 {
                                     forLoopNode.Range.End = TryFoldExpression(forLoopNode.Range.End);
+                                    forLoopNode.Range.End.ResolvedType = rangeEnd;
                                     if (rangeEnd.Type != PrimitiveType.Integer)
                                     {
                                         throw new AnalyzerException("Range values should be integers");
@@ -189,6 +193,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         if (ResolveExpressionType(whileLoopNode.Condition) is PrimitiveTypeInfo conditionType)
                         {
                             whileLoopNode.Condition = TryFoldExpression(whileLoopNode.Condition);
+                            whileLoopNode.Condition.ResolvedType = conditionType;
                             if (conditionType.Type != PrimitiveType.Boolean)
                             {
                                 throw new AnalyzerException("Condition should be bool", whileLoopNode.Line, whileLoopNode.Column);
@@ -221,6 +226,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         if (ResolveExpressionType(ifStatementNode.Condition) is PrimitiveTypeInfo conditionType)
                         {
                             ifStatementNode.Condition = TryFoldExpression(ifStatementNode.Condition);
+                            ifStatementNode.Condition.ResolvedType = conditionType;
                             if (conditionType.Type != PrimitiveType.Boolean)
                             {
                                 throw new AnalyzerException("Condition should be bool", ifStatementNode.Line, ifStatementNode.Column);
@@ -268,6 +274,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 CheckAssignmentPossibility(routineSymbol.Parameters[j].Type, ResolveExpressionType(routineCallStatementNode.Call.Arguments[j]), routineCallStatementNode.Call.Arguments[j]);
                                 routineCallStatementNode.Call.Arguments[j] = TryFoldExpression(routineCallStatementNode.Call.Arguments[j]);
+                                routineCallStatementNode.Call.Arguments[j].ResolvedType = ResolveExpressionType(routineCallStatementNode.Call.Arguments[j]);
                             }
                         }
                         else
@@ -291,6 +298,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         {
                             TypeInfo returnInfo = ResolveExpressionType(returnStatementNode.Value);
                             returnStatementNode.Value = TryFoldExpression(returnStatementNode.Value);
+                            returnStatementNode.Value.ResolvedType = returnInfo;
                             if (!returnInfo.Equals(returnType))
                             {
                                 throw new AnalyzerException("Invalid return value", returnStatementNode.Value.Line, returnStatementNode.Value.Column);
@@ -315,7 +323,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
                         TypeInfo targetType = ResolveExpressionType(assignmentNode.Target);
                         TypeInfo valueType = ResolveExpressionType(assignmentNode.Value);
-                        assignmentNode.Value = TryFoldExpression(assignmentNode.Target);
+                        assignmentNode.Value = TryFoldExpression(assignmentNode.Value);
+                        assignmentNode.Value.ResolvedType = valueType;
+                        assignmentNode.Target.ResolvedType = targetType;
                         CheckAssignmentPossibility(targetType, valueType, assignmentNode.Value);
                     }
                     else if (statementNode is PrintStatementNode printStatementNode)
@@ -323,8 +333,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         for (int j = 0; j < printStatementNode.Expressions.Count; j++)
                         {
                             var expression = printStatementNode.Expressions[j];
-                            ResolveExpressionType(expression);
+                            TypeInfo resolvedType = ResolveExpressionType(expression);
                             printStatementNode.Expressions[j] = TryFoldExpression(printStatementNode.Expressions[j]);
+                            printStatementNode.Expressions[j].ResolvedType = resolvedType;
 
                         }
                     }
@@ -358,11 +369,12 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     throw new AnalyzerException("Something went terribely wrong with routine declarations", routineDeclarationNode.Line, routineDeclarationNode.Column);
                 }
             }
-
-            Scope.Peek().Add(routineDeclarationNode.Name, new RoutineSymbol(routineDeclarationNode.Name,
+            RoutineSymbol result = new RoutineSymbol(routineDeclarationNode.Name,
                 routineDeclarationNode.ReturnType == null
                 ? null
-                : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null));
+                : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
+            routineDeclarationNode.RoutineSymbol = result;
+            Scope.Peek().Add(routineDeclarationNode.Name, result);
         }
         
     // Convert AST parameter declarations into internal VariableSymbol list
@@ -395,6 +407,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 variableType = ResolveExpressionType(variableDeclarationNode.Initializer!);
                 variableDeclarationNode.Initializer = TryFoldExpression(variableDeclarationNode.Initializer!);
+                variableDeclarationNode.Initializer.ResolvedType = variableType;
             }
             else
             {
@@ -403,11 +416,15 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     CheckAssignmentPossibility(variableType, ResolveExpressionType(variableDeclarationNode.Initializer), variableDeclarationNode.Initializer);
                     variableDeclarationNode.Initializer = TryFoldExpression(variableDeclarationNode.Initializer);
+                    variableDeclarationNode.Initializer.ResolvedType = ResolveExpressionType(variableDeclarationNode.Initializer);
                 }
             }
 
-            Scope.Peek().Add(variableDeclarationNode.Name,
-                 new VariableSymbol(variableDeclarationNode.Name, variableType));
+            VariableSymbol variableSymbol = new VariableSymbol(variableDeclarationNode.Name, variableType);
+
+            variableDeclarationNode.VariableSymbol = variableSymbol;
+
+            Scope.Peek().Add(variableDeclarationNode.Name, variableSymbol);
         }
 
     // Register a type declaration in the current scope after resolving
@@ -418,9 +435,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 throw new AnalyzerException($"Type already declared: '{typeDeclarationNode.Name}'", typeDeclarationNode.Line, typeDeclarationNode.Column);
             }
+            TypeSymbol typeSymbol = new TypeSymbol(typeDeclarationNode.Name, ResolveTypeFromTypeNodeDeclarations(typeDeclarationNode.Type, typeDeclarationNode.Name));
 
-            Scope.Peek().Add(typeDeclarationNode.Name,
-                new TypeSymbol(typeDeclarationNode.Name, ResolveTypeFromTypeNodeDeclarations(typeDeclarationNode.Type, typeDeclarationNode.Name)));
+            typeDeclarationNode.TypeSymbol = typeSymbol;
+
+            Scope.Peek().Add(typeDeclarationNode.Name, typeSymbol);
         }
 
 
@@ -509,6 +528,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     {
                         throw new AnalyzerException("Routines without return type cannot be used in expressions", routineCallNode.Line, routineCallNode.Column);
                     }
+                    routineCallNode.RoutineSymbol = routine;
                     return routine.ReturnType;
                 }
                 else
@@ -527,6 +547,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 if (baseSymbol is VariableSymbol variableSymbol)
                 {
                     TypeInfo currentType = variableSymbol.Type;
+                    modifiablePrimaryNode.VariableSymbol = variableSymbol;
 
                     if (modifiablePrimaryNode.AccessPart.Count() == 0)
                     {
@@ -575,7 +596,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 }
                             }
 
-                            currentType = arrayType.Type;
+                            currentType = arrayType.ElementType;
                         }
                     }
                     return currentType;
