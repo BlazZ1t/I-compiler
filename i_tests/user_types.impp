@@ -1,17 +1,30 @@
+type Point is record
+    var x : integer
+    var y : integer
+end
+
+var p : Point
+
+type int is integer
+
+var x : int
+
+var z : boolean
+
+var y : real
+
+type PointArray is array [10] Point
+
+
+type IntArray is array [20] int
+
+var points : PointArray
+
 routine pointRecord(xPosition : integer, yPosition : integer) : integer is
-    type Point is record
-        var x : integer
-        var y : integer
-    end
-
-    var p : Point
-
     p.x := xPosition
     p.y := yPosition
     return p.x
 end
-
-type int is integer
 
 routine integerArray() : integer is
     type IntegerArray is array [10] integer
@@ -27,12 +40,6 @@ routine integerArray() : integer is
     end
 
     return sum
-end
-
-type Person is record
-    var age : integer
-    var balance : integer
-    var dickSize : int
 end
 
 routine nestedRecord() is

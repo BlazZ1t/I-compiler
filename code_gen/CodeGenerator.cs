@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
 using ImperativeLang.SemanticalAnalyzerNS;
@@ -13,12 +14,14 @@ namespace ImperativeLang.CodeGen
 
         private Dictionary<string, IlInfo> IDToIlName = new Dictionary<string, IlInfo>();
 
+
         public void GenerateMSIL(ProgramNode AST)
         {
             using (_writer)
             {
                 WriteHeader();
                 GenerateTypeClasses(AST);
+                WriteMainClass(AST);
             }
         }
 
@@ -71,7 +74,6 @@ namespace ImperativeLang.CodeGen
                 {
                     TraverseBody(blockBody.Body, routineDec.Name);
                 }
-
             }
 
         }
@@ -152,15 +154,22 @@ namespace ImperativeLang.CodeGen
 
         private void GenerateArrayTypeClass(ArrayTypeInfo type, string className, string? objectName = null)
         {
-            _writer.WriteLine($".class public auto {className} extends [mscorlib]System.ValueType");
+            _writer.WriteLine($".class public auto ansi sealed {className} extends [mscorlib]System.ValueType");
             _writer.WriteLine("{");
+
             string ilFieldType = "";
             string ilNewArrType = "";
+            string elemLoadOpcode = "";
+            string elemStoreOpcode = "";
+            bool isStruct = objectName != null;
 
-            if (objectName != null)
+            // Determine IL type and load/store behavior
+            if (isStruct)
             {
-                ilFieldType = objectName;
-                ilNewArrType = objectName;
+                // Struct (valuetype) element
+                ilFieldType = $"valuetype {objectName!}";
+                ilNewArrType = $"valuetype {objectName}";
+                // For structs: load/store done via ldelema + ldobj/stobj
             }
             else if (type.ElementType is PrimitiveTypeInfo p)
             {
@@ -170,58 +179,105 @@ namespace ImperativeLang.CodeGen
                     case PrimitiveType.Boolean:
                         ilFieldType = "int32";
                         ilNewArrType = "[mscorlib]System.Int32";
+                        elemLoadOpcode = "ldelem.i4";
+                        elemStoreOpcode = "stelem.i4";
                         break;
 
                     case PrimitiveType.Real:
                         ilFieldType = "float32";
                         ilNewArrType = "[mscorlib]System.Single";
+                        elemLoadOpcode = "ldelem.r4";
+                        elemStoreOpcode = "stelem.r4";
                         break;
+
+                    default:
+                        throw new Exception("Unhandled primitive type!");
                 }
             }
-            else throw new Exception("Unhandled element type!");
+            else
+            {
+                throw new Exception("Unhandled element type!");
+            }
+
+            // FIELD
             _writer.WriteLine($".field public {ilFieldType}[] data");
 
-            //Constructor
+
+            // CONSTRUCTOR
             _writer.WriteLine(".method public hidebysig specialname rtspecialname instance void .ctor() cil managed");
             _writer.WriteLine("{");
-            _writer.WriteLine(".maxstack 3");
-            _writer.WriteLine("ldarg.0");
-            _writer.WriteLine("call instance void [mscorlib]System.ValueType::.ctor()");
-            _writer.WriteLine("ldarg.0");
-            _writer.WriteLine($"ldc.i4.s {type.Size}");
-            _writer.WriteLine($"newarr {ilNewArrType}");
-            _writer.WriteLine($"stfld {ilFieldType}[] {className}::data");
-            _writer.WriteLine("ret");
+            _writer.WriteLine("  .maxstack 3");
+            _writer.WriteLine("  ldarg.0");
+            _writer.WriteLine("  call instance void [mscorlib]System.ValueType::.ctor()");
+            _writer.WriteLine("  ldarg.0");
+            _writer.WriteLine($"  ldc.i4.s {type.Size}");
+            _writer.WriteLine($"  newarr {ilNewArrType}");
+            _writer.WriteLine($"  stfld {ilFieldType}[] {className}::data");
+            _writer.WriteLine("  ret");
             _writer.WriteLine("}");
 
-            //Getter
-            _writer.WriteLine(".method public hidebysig instance " + ilFieldType + " get_Item(int32 index) cil managed");
+
+            // GETTER
+            _writer.WriteLine($".method public hidebysig instance {ilFieldType} get_Item(int32 index) cil managed");
             _writer.WriteLine("{");
-            _writer.WriteLine(".maxstack 3");
-            _writer.WriteLine("ldarg.0");
-            _writer.WriteLine($"ldfld {ilFieldType}[] {className}::data");
-            _writer.WriteLine("ldarg.1");
-            _writer.WriteLine($"ldelem.{ilFieldType}");
-            _writer.WriteLine("ret");
-            _writer.WriteLine("}");
-            
-            //Setter
-            _writer.WriteLine(".method public hidebysig instance void set_Item(int32 index, " + ilFieldType + " value) cil managed");
-            _writer.WriteLine("{");
-            _writer.WriteLine(".maxstack 4");
-            _writer.WriteLine("ldarg.0");
-            _writer.WriteLine($"ldfld {ilFieldType}[] {className}::data");
-            _writer.WriteLine("ldarg.1");
-            _writer.WriteLine("ldarg.2");
-            _writer.WriteLine($"stelem.{ilFieldType}");
-            _writer.WriteLine("ret");
-            _writer.WriteLine("}");
+            _writer.WriteLine("  .maxstack 3");
+
+            if (!isStruct)
+            {
+                // Primitive getter
+                _writer.WriteLine("  ldarg.0");
+                _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
+                _writer.WriteLine("  ldarg.1");
+                _writer.WriteLine($"  {elemLoadOpcode}");
+                _writer.WriteLine("  ret");
+            }
+            else
+            {
+                // Struct getter: ldelema + ldobj
+                _writer.WriteLine("  ldarg.0");
+                _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
+                _writer.WriteLine("  ldarg.1");
+                _writer.WriteLine($"  ldelema {ilFieldType}");
+                _writer.WriteLine($"  ldobj {ilFieldType}");
+                _writer.WriteLine("  ret");
+            }
 
             _writer.WriteLine("}");
+
+
+            // SETTER
+            _writer.WriteLine($".method public hidebysig instance void set_Item(int32, {ilFieldType}) cil managed");
+            _writer.WriteLine("{");
+            _writer.WriteLine("  .maxstack 4");
+
+            if (!isStruct)
+            {
+                _writer.WriteLine("  ldarg.0");
+                _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
+                _writer.WriteLine("  ldarg.1");
+                _writer.WriteLine("  ldarg.2");
+                _writer.WriteLine($"  {elemStoreOpcode}");
+                _writer.WriteLine("  ret");
+            }
+            else
+            {
+                _writer.WriteLine("  ldarg.0");
+                _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
+                _writer.WriteLine("  ldarg.1");
+                _writer.WriteLine($"  ldelema {ilFieldType}");
+                _writer.WriteLine("  ldarg.2");
+                _writer.WriteLine($"  stobj {ilFieldType}");
+                _writer.WriteLine("  ret");
+            }
+
+            _writer.WriteLine("}");
+
+            _writer.WriteLine("}"); // end class
         }
+
         private void GenerateRecordTypeClass(RecordTypeInfo type, string className, Dictionary<string, string> objectNames)
         {
-            _writer.WriteLine($".class public auto {className} extends [mscorlib]System.ValueType");
+            _writer.WriteLine($".class public auto sealed {className} extends [mscorlib]System.ValueType");
             _writer.WriteLine("{");
 
             Dictionary<string, string> ilFieldTypes = new();
@@ -265,10 +321,7 @@ namespace ImperativeLang.CodeGen
 
             _writer.WriteLine("}");
         }
-
-
-
-        string ResolveIlType(string fieldName, TypeInfo type, Dictionary<string,string> objectNames)
+        private string ResolveIlType(string fieldName, TypeInfo type, Dictionary<string,string> objectNames)
         {
             switch (type)
             {
@@ -282,7 +335,7 @@ namespace ImperativeLang.CodeGen
                     };
 
                 case RecordTypeInfo r:
-                    return $"valueType {objectNames[fieldName]}";
+                    return $"valuetype {objectNames[fieldName]}";
 
                 case ArrayTypeInfo a:
                     return $"{objectNames[fieldName]}[]";
@@ -290,6 +343,92 @@ namespace ImperativeLang.CodeGen
                 default:
                     throw new Exception("Unknown field type");
             }
+        }
+    
+        // Main class
+        private void WriteMainClass(ProgramNode AST)
+        {
+            _writer.WriteLine(".class public auto ansi Program");
+            _writer.WriteLine("{");
+            WriteGlobalVariables(AST);
+            WriteEntrypointMethod(AST);
+            WriteRoutineMethods(AST);
+            _writer.WriteLine("}");
+        }
+
+        private void WriteGlobalVariables(ProgramNode AST)
+        {
+            foreach(var node in AST.declarations.OfType<VariableDeclarationNode>())
+            {
+                TypeInfo type = node.VariableSymbol!.Type;
+                if(type is PrimitiveTypeInfo primitiveType)
+                {
+                    switch (primitiveType.Type)
+                    {
+                        case PrimitiveType.Real:
+                            _writer.WriteLine($".field public static float32 {node.Name}");
+                            break;
+                        case PrimitiveType.Integer:
+                        case PrimitiveType.Boolean:
+                            _writer.WriteLine($".field public static int32 {node.Name}");
+                            break;
+                    }
+                }
+                else if(type is ArrayTypeInfo arrayType)
+                {
+                    _writer.WriteLine($".field public static class {IDToIlName[arrayType.Name].names.Peek()} {node.Name}");
+                }
+                else if(type is RecordTypeInfo recordType)
+                {
+                    _writer.WriteLine($".field public static class {IDToIlName[recordType.Name].names.Peek()} {node.Name}");
+                }
+                else throw new Exception("Hehe ;3");
+            }
+        }
+
+        private void WriteEntrypointMethod(ProgramNode AST)
+        {
+            List<RoutineDeclarationNode> routines = new List<RoutineDeclarationNode>();
+            foreach(var routine in AST.declarations.OfType<RoutineDeclarationNode>())
+            {
+                routines.Add(routine);
+            }
+
+            _writer.WriteLine(".method public static void Main(string[] args) cil managed");
+            _writer.WriteLine("{");
+            _writer.WriteLine(".entrypoint");
+            
+            _writer.WriteLine("ldarg.0");
+            _writer.WriteLine("brfalse NO_ARGS");
+
+            _writer.WriteLine("ldarg.0");
+            _writer.WriteLine("ldlen");
+            _writer.WriteLine("conv.i4");
+            _writer.WriteLine("ldc.i4.1");
+            _writer.WriteLine("blt NO_ARGS");
+
+            foreach (var routine in routines)
+            {
+                _writer.WriteLine("ldarg.0");
+                _writer.WriteLine("ldc.i4.0");
+                _writer.WriteLine("ldelem.ref");
+                _writer.WriteLine($"ldstr \"{routine.Name}\"");
+                _writer.WriteLine("call bool [mscorlib]System.String::Equals(string, string)");
+                _writer.WriteLine($"brtrue {routine.Name}");
+            }
+
+            _writer.WriteLine("NO_ARGS:");
+            _writer.WriteLine("ldstr \"Error: no arguments provided!\"");
+            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
+            _writer.WriteLine("ret");
+
+            
+            _writer.WriteLine("}");
+        }
+
+        private void WriteRoutineMethods(ProgramNode AST)
+        {
+            
         }
     }
 }
