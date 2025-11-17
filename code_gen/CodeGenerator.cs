@@ -1,3 +1,5 @@
+using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using ImperativeLang.SemanticalAnalyzerNS;
 using ImperativeLang.SyntaxAnalyzer;
 
@@ -9,12 +11,14 @@ namespace ImperativeLang.CodeGen
 
         private StreamWriter _writer;
 
+        private Dictionary<string, IlInfo> IDToIlName = new Dictionary<string, IlInfo>();
+
         public void GenerateMSIL(ProgramNode AST)
         {
             using (_writer)
             {
                 WriteHeader();
-
+                GenerateTypeClasses(AST);
             }
         }
 
@@ -32,11 +36,122 @@ namespace ImperativeLang.CodeGen
         private void GenerateTypeClasses(ProgramNode AST)
         {
             //TODO: Make a full pass with context tracking
+            foreach(DeclarationNode node in AST.declarations)
+            {
+                if(node is TypeDeclarationNode typeDec)
+                {
+                    TypeInfo type = typeDec.TypeSymbol!.Type;
+                    if (type is PrimitiveTypeInfo) continue;
+                    if (!IDToIlName.ContainsKey(typeDec.Name))
+                    {
+                        IDToIlName.Add(typeDec.Name, new IlInfo());
+                    }
+                    IDToIlName[typeDec.Name].id++;
+                    string ilName = $"{typeDec.Name}@global@{IDToIlName[typeDec.Name].id}";
+                    IDToIlName[typeDec.Name].names.Push(ilName);
+                    if (type is ArrayTypeInfo arrayTypeInfo)
+                    {
+                        GenerateArrayTypeClass(arrayTypeInfo, ilName, ResolveIlTypeName(arrayTypeInfo.ElementType));
+                    }
+                    else if(type is RecordTypeInfo recordTypeInfo)
+                    {
+                        Dictionary<string, string> elementTypeNames = new Dictionary<string, string>();
+                        foreach(var typeName in recordTypeInfo.Fields.Keys)
+                        {
+                            string? elementTypeName = ResolveIlTypeName(recordTypeInfo.Fields[typeName]);
+                            if(elementTypeName != null)
+                            {
+                                elementTypeNames[typeName] = elementTypeName;
+                            }
+                        }
+
+                        GenerateRecordTypeClass(recordTypeInfo, ilName, elementTypeNames);
+                    }
+                }else if((node is RoutineDeclarationNode routineDec) && (routineDec.Body is BlockRoutineBodyNode blockBody))
+                {
+                    TraverseBody(blockBody.Body, routineDec.Name);
+                }
+
+            }
+
         }
 
-        private void GenerateArrayTypeClass(ArrayTypeInfo type, string context, int id, string? objectName = null)
+        private void TraverseBody(List<Node> body, string context)
         {
-            string className = $"{type.Name}@{context}@{id}";
+            List<string> scope = new List<string>();
+
+            foreach(Node node in body)
+            {
+                if(node is TypeDeclarationNode typeDec)
+                {
+                    TypeInfo type = typeDec.TypeSymbol!.Type;
+                    if (type is PrimitiveTypeInfo) continue;
+                    if (!IDToIlName.ContainsKey(typeDec.Name))
+                    {
+                        IDToIlName.Add(typeDec.Name, new IlInfo());
+                    }
+                    IDToIlName[typeDec.Name].id++;
+                    string ilName = $"{typeDec.Name}@{context}@{IDToIlName[typeDec.Name].id}";
+                    IDToIlName[typeDec.Name].names.Push(ilName);
+                    scope.Add(typeDec.Name);
+
+                    if (type is ArrayTypeInfo arrayTypeInfo)
+                    {
+                        GenerateArrayTypeClass(arrayTypeInfo, ilName, ResolveIlTypeName(arrayTypeInfo.ElementType));
+                    }
+                    else if(type is RecordTypeInfo recordTypeInfo)
+                    {
+                        Dictionary<string, string> elementTypeNames = new Dictionary<string, string>();
+                        foreach(var typeName in recordTypeInfo.Fields.Keys)
+                        {
+                            string? elementTypeName = ResolveIlTypeName(recordTypeInfo.Fields[typeName]);
+                            if(elementTypeName != null)
+                            {
+                                elementTypeNames[typeName] = elementTypeName;
+                            }
+                        }
+
+                        GenerateRecordTypeClass(recordTypeInfo, ilName, elementTypeNames);
+                    }
+                }else if(node is IfStatementNode ifNode)
+                {
+                    TraverseBody(ifNode.ThenBody, context);
+                    if(ifNode.ElseBody != null)
+                    {
+                        TraverseBody(ifNode.ElseBody, context);
+                    }
+                }else if(node is ForLoopNode forNode)
+                {
+                    TraverseBody(forNode.Body, context);
+                }else if(node is WhileLoopNode whileNode)
+                {
+                    TraverseBody(whileNode.Body, context);
+                }
+            }
+
+            foreach(var el in scope)
+            {
+                IDToIlName[el].names.Pop();
+            }
+            
+        }
+
+        private string? ResolveIlTypeName(TypeInfo typeInfo)
+        {
+            string? ilTypeName = null;
+            if (typeInfo is ArrayTypeInfo a)
+            {
+                ilTypeName = IDToIlName[a.Name].names.Peek();
+            }
+            else if (typeInfo is RecordTypeInfo r)
+            {
+                ilTypeName = IDToIlName[r.Name].names.Peek();
+            }
+            return ilTypeName;
+        }
+
+        private void GenerateArrayTypeClass(ArrayTypeInfo type, string className, string? objectName = null)
+        {
             _writer.WriteLine($".class public auto valuetype {className}");
             _writer.WriteLine("{");
             string ilFieldType = "";
@@ -104,9 +219,8 @@ namespace ImperativeLang.CodeGen
 
             _writer.WriteLine("}");
         }
-        private void GenerateRecordTypeClass(RecordTypeInfo type, string context, int id, Dictionary<string, string> objectNames)
+        private void GenerateRecordTypeClass(RecordTypeInfo type, string className, Dictionary<string, string> objectNames)
         {
-            string className = $"{type.Name}@{context}@{id}";
             _writer.WriteLine($".class public auto valuetype {className}");
             _writer.WriteLine("{");
 
@@ -119,7 +233,7 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine($".field public {ilFieldTypes[field]} {field}");
             }
 
-            _writer.WriteLine(".method public hidebysig specialname rtspecialname instance void .ctor(");
+            _writer.Write(".method public hidebysig specialname rtspecialname instance void .ctor(");
 
             bool first = true;
             foreach (var (fieldName, ilFieldType) in ilFieldTypes)

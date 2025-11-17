@@ -107,27 +107,27 @@ namespace ImperativeLang
                 var codegen = new CodeGenerator(new StreamWriter($"{outputPath}.il"));
                 codegen.GenerateMSIL(programNode);
                 
-                var process = new Process();
-                process.StartInfo.FileName = "ilasm";
-                process.StartInfo.Arguments = $"\"{outputPath}.il\" /exe /out:\"{outputPath}.exe\"";
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
+                // var process = new Process();
+                // process.StartInfo.FileName = "ilasm";
+                // process.StartInfo.Arguments = $"\"{outputPath}.il\" /exe /out:\"{outputPath}.exe\"";
+                // process.StartInfo.UseShellExecute = false;
+                // process.StartInfo.RedirectStandardOutput = true;
+                // process.StartInfo.RedirectStandardError = true;
 
-                process.Start();
-                string output = process.StandardOutput.ReadToEnd();
-                string errors = process.StandardError.ReadToEnd();
-                process.WaitForExit();
+                // process.Start();
+                // string output = process.StandardOutput.ReadToEnd();
+                // string errors = process.StandardError.ReadToEnd();
+                // process.WaitForExit();
 
-                if (process.ExitCode == 0)
-                {
-                    System.Console.WriteLine("Done");
-                }
-                else
-                {
-                    System.Console.WriteLine("Assembly error:");
-                    System.Console.WriteLine(errors);
-                }
+                // if (process.ExitCode == 0)
+                // {
+                //     System.Console.WriteLine("Done");
+                // }
+                // else
+                // {
+                //     System.Console.WriteLine("Assembly error:");
+                //     System.Console.WriteLine(errors);
+                // }
 
                 // if (!testing)
                 // { 
