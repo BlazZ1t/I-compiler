@@ -27,7 +27,7 @@ namespace ImperativeLang.CodeGen
             _writer.WriteLine();
         }
 
-        
+
         //Type declarations
         private void GenerateTypeClasses(ProgramNode AST)
         {
@@ -104,9 +104,81 @@ namespace ImperativeLang.CodeGen
 
             _writer.WriteLine("}");
         }
-        private void GenerateRecordTypeClass(RecordTypeInfo type, string context, int id)
+        private void GenerateRecordTypeClass(RecordTypeInfo type, string context, int id, Dictionary<string, string> objectNames)
         {
-            //TODO: Implement method
+            string className = $"{type.Name}@{context}@{id}";
+            _writer.WriteLine($".class public auto valuetype {className}");
+            _writer.WriteLine("{");
+
+            Dictionary<string, string> ilFieldTypes = new();
+
+            //TODO: Check if works
+            foreach(string field in type.Fields.Keys)
+            {
+                if(type.Fields[field] is PrimitiveTypeInfo p)
+                {
+                    ilFieldTypes[field] = ResolveIlType(p, objectNames);;
+                    _writer.WriteLine($".field public {ilFieldTypes[field]} {field}");
+                }
+            }
+
+            _writer.WriteLine(".method public hidebysig specialname rtspecialname instance void .ctor(");
+
+            bool first = true;
+            foreach (var (fieldName, ilFieldType) in ilFieldTypes)
+            {
+                if (!first) _writer.Write(", ");
+                first = false;
+
+                _writer.Write($"{ilFieldType} {fieldName}");
+            }
+            _writer.WriteLine(") cil managed");
+
+             _writer.WriteLine("{");
+            _writer.WriteLine(".maxstack 8");
+
+            _writer.WriteLine("ldarg.0");
+            _writer.WriteLine("call instance void [mscorlib]System.ValueType::.ctor()");
+
+            int index = 1;
+            foreach (var (fieldName, ilFieldType) in ilFieldTypes)
+            {
+                _writer.WriteLine("ldarg.0");
+                _writer.WriteLine($"ldarg.{index}");
+                _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
+                index++;
+            }
+
+            _writer.WriteLine("ret");
+            _writer.WriteLine("}");
+
+            _writer.WriteLine("}");
+        }
+
+
+
+        string ResolveIlType(TypeInfo type, Dictionary<string,string> objectNames)
+        {
+            switch (type)
+            {
+                case PrimitiveTypeInfo p:
+                    return p.Type switch
+                    {
+                        PrimitiveType.Integer => "int32",
+                        PrimitiveType.Boolean => "int32",
+                        PrimitiveType.Real => "float32",
+                        _ => throw new Exception("Unsupported primitive")
+                    };
+
+                case RecordTypeInfo r:
+                    return $"valuetype {objectNames[r.Name]}";
+
+                case ArrayTypeInfo a:
+                    return $"{objectNames[a.Name]}[]";
+
+                default:
+                    throw new Exception("Unknown field type");
+            }
         }
     }
 }
