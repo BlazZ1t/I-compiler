@@ -115,11 +115,8 @@ namespace ImperativeLang.CodeGen
             //TODO: Check if works
             foreach(string field in type.Fields.Keys)
             {
-                if(type.Fields[field] is PrimitiveTypeInfo p)
-                {
-                    ilFieldTypes[field] = ResolveIlType(p, objectNames);;
-                    _writer.WriteLine($".field public {ilFieldTypes[field]} {field}");
-                }
+                ilFieldTypes[field] = ResolveIlType(type.Fields[field], objectNames);;
+                _writer.WriteLine($".field public {ilFieldTypes[field]} {field}");
             }
 
             _writer.WriteLine(".method public hidebysig specialname rtspecialname instance void .ctor(");
