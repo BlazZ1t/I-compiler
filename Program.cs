@@ -13,7 +13,7 @@ namespace ImperativeLang
         {
             if (args.Length == 0)
             {
-                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/test.impp");
+                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/user_types.impp");
                 return;
             }
 

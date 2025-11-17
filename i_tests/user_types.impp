@@ -11,6 +11,8 @@ routine pointRecord(xPosition : integer, yPosition : integer) : integer is
     return p.x
 end
 
+type int is integer
+
 routine integerArray() : integer is
     type IntegerArray is array [10] integer
     var intArray : IntegerArray
@@ -27,10 +29,28 @@ routine integerArray() : integer is
     return sum
 end
 
+type Person is record
+    var age : integer
+    var balance : integer
+    var dickSize : int
+end
+
 routine nestedRecord() is
     type Person is record
         var age : integer
         var balance : integer
+    end
+
+    if true then
+        type Person is record
+            var age : integer
+            var balance : integer
+        end
+        type Family is record
+            var father : Person
+            var mother : Person
+            var son : Person
+        end
     end
 
     type Family is record

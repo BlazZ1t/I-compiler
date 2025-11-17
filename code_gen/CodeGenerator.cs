@@ -152,7 +152,7 @@ namespace ImperativeLang.CodeGen
 
         private void GenerateArrayTypeClass(ArrayTypeInfo type, string className, string? objectName = null)
         {
-            _writer.WriteLine($".class public auto valuetype {className}");
+            _writer.WriteLine($".class public auto {className} extends [mscorlib]System.ValueType");
             _writer.WriteLine("{");
             string ilFieldType = "";
             string ilNewArrType = "";
@@ -221,7 +221,7 @@ namespace ImperativeLang.CodeGen
         }
         private void GenerateRecordTypeClass(RecordTypeInfo type, string className, Dictionary<string, string> objectNames)
         {
-            _writer.WriteLine($".class public auto valuetype {className}");
+            _writer.WriteLine($".class public auto {className} extends [mscorlib]System.ValueType");
             _writer.WriteLine("{");
 
             Dictionary<string, string> ilFieldTypes = new();
@@ -229,7 +229,7 @@ namespace ImperativeLang.CodeGen
             //TODO: Check if works
             foreach(string field in type.Fields.Keys)
             {
-                ilFieldTypes[field] = ResolveIlType(type.Fields[field], objectNames);;
+                ilFieldTypes[field] = ResolveIlType(field, type.Fields[field], objectNames);
                 _writer.WriteLine($".field public {ilFieldTypes[field]} {field}");
             }
 
@@ -268,7 +268,7 @@ namespace ImperativeLang.CodeGen
 
 
 
-        string ResolveIlType(TypeInfo type, Dictionary<string,string> objectNames)
+        string ResolveIlType(string fieldName, TypeInfo type, Dictionary<string,string> objectNames)
         {
             switch (type)
             {
@@ -282,10 +282,10 @@ namespace ImperativeLang.CodeGen
                     };
 
                 case RecordTypeInfo r:
-                    return $"valuetype {objectNames[r.Name]}";
+                    return $"valueType {objectNames[fieldName]}";
 
                 case ArrayTypeInfo a:
-                    return $"{objectNames[a.Name]}[]";
+                    return $"{objectNames[fieldName]}[]";
 
                 default:
                     throw new Exception("Unknown field type");
