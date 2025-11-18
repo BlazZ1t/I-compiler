@@ -376,11 +376,11 @@ namespace ImperativeLang.CodeGen
                 }
                 else if(type is ArrayTypeInfo arrayType)
                 {
-                    _writer.WriteLine($".field public static class {IDToIlName[arrayType.Name].names.Peek()} {node.Name}");
+                    _writer.WriteLine($".field public static valuetype {IDToIlName[arrayType.Name].names.Peek()} {node.Name}");
                 }
                 else if(type is RecordTypeInfo recordType)
                 {
-                    _writer.WriteLine($".field public static class {IDToIlName[recordType.Name].names.Peek()} {node.Name}");
+                    _writer.WriteLine($".field public static valuetype {IDToIlName[recordType.Name].names.Peek()} {node.Name}");
                 }
                 else throw new Exception("Hehe ;3");
             }
@@ -388,12 +388,12 @@ namespace ImperativeLang.CodeGen
 
         private void WriteEntrypointMethod(ProgramNode AST)
         {
-            List<RoutineDeclarationNode> routines = new List<RoutineDeclarationNode>();
+            List<RoutineSymbol> routines = new List<RoutineSymbol>();
             foreach(var routine in AST.declarations.OfType<RoutineDeclarationNode>())
             {
-                routines.Add(routine);
+                routines.Add(routine.RoutineSymbol!);
             }
-
+            _writer.WriteLine("");
             _writer.WriteLine(".method public static void Main(string[] args) cil managed");
             _writer.WriteLine("{");
             _writer.WriteLine(".entrypoint");
@@ -406,6 +406,7 @@ namespace ImperativeLang.CodeGen
             _writer.WriteLine("conv.i4");
             _writer.WriteLine("ldc.i4.1");
             _writer.WriteLine("blt NO_ARGS");
+            _writer.WriteLine("");
 
             foreach (var routine in routines)
             {
@@ -414,15 +415,112 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("ldelem.ref");
                 _writer.WriteLine($"ldstr \"{routine.Name}\"");
                 _writer.WriteLine("call bool [mscorlib]System.String::Equals(string, string)");
-                _writer.WriteLine($"brtrue {routine.Name}");
+                _writer.WriteLine($"brtrue FILL_{routine.Name}");
+                _writer.WriteLine("");
             }
+            _writer.WriteLine("br END");
+            _writer.WriteLine("");
+            
+            foreach (var routine in routines)
+            {
+                _writer.WriteLine($"FILL_{routine.Name}:");
+                bool badRoutineFlag = false;
+                List<string> argumentTypes = new List<string>();
+                foreach(var arg in routine.Parameters)
+                {
+                    if(arg.Type is PrimitiveTypeInfo primitiveType)
+                    {
+                        switch (primitiveType.Type)
+                        {
+                            case PrimitiveType.Integer:
+                            case PrimitiveType.Boolean:
+                                argumentTypes.Add("int32");
+                                break;
+                            case PrimitiveType.Real:
+                                argumentTypes.Add("float32");
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        _writer.WriteLine("br BAD_ROUTINE");
+                        badRoutineFlag = true;
+                        break;
+                    }
+                }
+
+                if (badRoutineFlag)
+                {
+                    continue;
+                }
+
+
+                _writer.WriteLine("ldarg.0");
+                _writer.WriteLine("ldlen");
+                _writer.WriteLine("conv.i4");
+                _writer.WriteLine($"ldc.i4.{argumentTypes.Count}");
+                _writer.WriteLine("blt TOO_FEW_ARGS");
+                _writer.WriteLine("ldarg.0");
+                _writer.WriteLine("ldlen");
+                _writer.WriteLine("conv.i4");
+                _writer.WriteLine($"ldc.i4.{argumentTypes.Count+1}");
+                _writer.WriteLine("bgt TOO_MANY_ARGS");
+                _writer.WriteLine("");
+
+                for(int i = 0; i < argumentTypes.Count; i++)
+                {
+                    string argType = argumentTypes[i];
+
+                    
+
+                    _writer.WriteLine("ldarg.0");
+                    _writer.WriteLine($"ldc.i4.{i+1}");
+                    _writer.WriteLine("ldelem.ref");
+                    if(argType == "int32")
+                    {
+                        _writer.WriteLine("call int32 [mscorlib]System.Int32::Parse(string)");
+                    }
+                    else if(argType == "float32")
+                    {
+                        _writer.WriteLine("call float32 [mscorlib]System.Single::Parse(string)");
+                    }
+                    else
+                    {
+                        throw new Exception("Something went wrond while generating entrypoint method!");
+                    }
+                    
+                }
+                _writer.WriteLine("br END");
+                _writer.WriteLine("");
+            }
+
+            _writer.WriteLine("TOO_FEW_ARGS:");
+            _writer.WriteLine("ldstr \"Error: too few arguments provided!\"");
+            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
+            _writer.WriteLine("br END");
+            _writer.WriteLine("");
+
+            _writer.WriteLine("TOO_MANY_ARGS:");
+            _writer.WriteLine("ldstr \"Error: too many arguments provided!\"");
+            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
+            _writer.WriteLine("br END");
+            _writer.WriteLine("");
+
+            _writer.WriteLine("BAD_ROUTINE:");
+            _writer.WriteLine("ldstr \"Error: entry point routine takes an argument of a user-defined type!\"");
+            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
+            _writer.WriteLine("br END");
+            _writer.WriteLine("");
 
             _writer.WriteLine("NO_ARGS:");
             _writer.WriteLine("ldstr \"Error: no arguments provided!\"");
             _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
-            _writer.WriteLine("ret");
+            _writer.WriteLine("");
 
+            _writer.WriteLine("END:");
+            _writer.WriteLine("ret");
             
+
             _writer.WriteLine("}");
         }
 
