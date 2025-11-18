@@ -418,7 +418,7 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine($"brtrue FILL_{routine.Name}");
                 _writer.WriteLine("");
             }
-            _writer.WriteLine("br END");
+            _writer.WriteLine("br WRONG_ROUTINE");
             _writer.WriteLine("");
             
             foreach (var routine in routines)
@@ -508,6 +508,12 @@ namespace ImperativeLang.CodeGen
 
             _writer.WriteLine("BAD_ROUTINE:");
             _writer.WriteLine("ldstr \"Error: entry point routine takes an argument of a user-defined type!\"");
+            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
+            _writer.WriteLine("br END");
+            _writer.WriteLine("");
+
+            _writer.WriteLine("WRONG_ROUTINE:");
+            _writer.WriteLine("ldstr \"Error: a non-existent entry point method was entered!\"");
             _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(string)");
             _writer.WriteLine("br END");
             _writer.WriteLine("");
