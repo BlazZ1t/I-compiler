@@ -8,4 +8,5 @@ var x : Point
 routine main(a : integer) is
     var y : integer is 5
     var x : integer is (5 + 7 * 23)
+    print 5, x, y, x*5
 end

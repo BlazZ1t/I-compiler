@@ -476,8 +476,9 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("ldarg.0");
                 _writer.WriteLine("ldlen");
                 _writer.WriteLine("conv.i4");
-                _writer.WriteLine($"ldc.i4.{argumentTypes.Count}");
+                _writer.WriteLine($"ldc.i4.{argumentTypes.Count+1}");
                 _writer.WriteLine("blt TOO_FEW_ARGS");
+                _writer.WriteLine("");
                 _writer.WriteLine("ldarg.0");
                 _writer.WriteLine("ldlen");
                 _writer.WriteLine("conv.i4");
@@ -485,10 +486,17 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("bgt TOO_MANY_ARGS");
                 _writer.WriteLine("");
 
+                string parameters = "";
                 for(int i = 0; i < argumentTypes.Count; i++)
                 {
                     string argType = argumentTypes[i];
+                    
+                    parameters += argType;
 
+                    if(i != argumentTypes.Count - 1)
+                    {
+                        parameters += ",";
+                    }
                     
 
                     _writer.WriteLine("ldarg.0");
@@ -506,8 +514,13 @@ namespace ImperativeLang.CodeGen
                     {
                         throw new Exception("Something went wrond while generating entrypoint method!");
                     }
-                    _writer.WriteLine("pop");
                     
+                    
+                }
+                _writer.WriteLine($"call {(routine.ReturnType == null ? "void" : ResolveIlTypeName(routine.ReturnType))} Program::{routine.Name}({parameters})");
+                if(routine.ReturnType != null)
+                {
+                    _writer.WriteLine("pop");
                 }
                 _writer.WriteLine("br END");
                 _writer.WriteLine("");
@@ -652,19 +665,27 @@ namespace ImperativeLang.CodeGen
         {
             List<string> typeScope = new List<string>();
             List<string> varScope = new List<string>();
-
+            bool first = true;
             foreach(Node node in body)
             {
                 
                 if(node is VariableDeclarationNode varDec)
                 {
-                    localsCounter++;
+                    if (first)
+                    {
+                        first = false;
+                    }
+                    else
+                    {
+                        _writer.Write(",");
+                    }
+                    
                     TypeInfo type = varDec.VariableSymbol!.Type;
                     if (!VariableIdentifierToIlName.ContainsKey(varDec.Name))
                     {
                         VariableIdentifierToIlName.Add(varDec.Name, new IlInfo());
                     }
-                    
+                    VariableIdentifierToIlName[varDec.Name].id++;
                     string ilName = $"{varDec.Name}@{VariableIdentifierToIlName[varDec.Name].id}";
                     varScope.Add(varDec.Name);
 
@@ -683,7 +704,7 @@ namespace ImperativeLang.CodeGen
                         VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(recordTypeInfo)} {ilName}");
                     }
-                    VariableIdentifierToIlName[varDec.Name].id++;
+                    localsCounter++;
                 }else if(node is IfStatementNode ifNode)
                 {
                     GenerateLocals(ifNode.ThenBody, context);
@@ -711,6 +732,7 @@ namespace ImperativeLang.CodeGen
                     TypeIdentifierToIlName[typeDec.Name].names.Push(ilName);
                     typeScope.Add(typeDec.Name);
                 }
+            
             }
 
             foreach(var el in typeScope)
@@ -735,13 +757,13 @@ namespace ImperativeLang.CodeGen
             {
                 if (node is VariableDeclarationNode varDec)
                 {
-                    localsCounter++;
+                    
                     TypeInfo type = varDec.VariableSymbol!.Type;
                     if (!VariableIdentifierToIlName.ContainsKey(varDec.Name))
                     {
                         VariableIdentifierToIlName.Add(varDec.Name, new IlInfo());
                     }
-                    
+                    VariableIdentifierToIlName[varDec.Name].id++;
                     string ilName = $"{varDec.Name}@{VariableIdentifierToIlName[varDec.Name].id}";
                     varScope.Add(varDec.Name);
 
@@ -757,13 +779,13 @@ namespace ImperativeLang.CodeGen
                     {
                         VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
                     }
-                    VariableIdentifierToIlName[varDec.Name].id++;
                     Console.WriteLine(varDec.Name);
                     if(varDec.Initializer != null)
                     {
                         WriteExpression(varDec.Initializer);
                         _writer.WriteLine($"st{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
                     }
+                    localsCounter++;
                 }
                 else if(node is TypeDeclarationNode typeDec)
                 {
@@ -778,6 +800,22 @@ namespace ImperativeLang.CodeGen
                     string ilName = $"{typeDec.Name}@{context}@{TypeIdentifierToIlName[typeDec.Name].id}";
                     TypeIdentifierToIlName[typeDec.Name].names.Push(ilName);
                     typeScope.Add(typeDec.Name);
+                }
+                else if(node is PrintStatementNode print)
+                {
+                    foreach(var expression in print.Expressions)
+                    {
+                        WriteExpression(expression);
+                        if(((PrimitiveTypeInfo)(expression.ResolvedType)).Type is PrimitiveType.Integer)
+                        {
+                            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(int32)");
+                        }
+                        else if((((PrimitiveTypeInfo)(expression.ResolvedType)).Type is PrimitiveType.Boolean) 
+                            || (((PrimitiveTypeInfo)(expression.ResolvedType)).Type is PrimitiveType.Real))
+                        {
+                            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(float32)");
+                        }
+                    }
                 }
 
             }
@@ -923,7 +961,7 @@ namespace ImperativeLang.CodeGen
                 {
                     WriteExpression(parameter);
                 }
-                _writer.WriteLine($"call {(routineCall.RoutineSymbol!.ReturnType == null ? "void" : ResolveIlTypeName(routineCall.RoutineSymbol!.ReturnType))} [mscorlib]Program::{routineCall.Name}({parameterList})");
+                _writer.WriteLine($"call {(routineCall.RoutineSymbol!.ReturnType == null ? "void" : ResolveIlTypeName(routineCall.RoutineSymbol!.ReturnType))} Program::{routineCall.Name}({parameterList})");
             }
             else throw new Exception("Expression is not expression");
         }
