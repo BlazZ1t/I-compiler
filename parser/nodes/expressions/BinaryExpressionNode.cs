@@ -13,7 +13,6 @@ namespace ImperativeLang.SyntaxAnalyzer
         GreaterEqual,  // >=
         Equal,         // =
         NotEqual,      // /=
-        Not,
         And,
         Or,
         Xor,

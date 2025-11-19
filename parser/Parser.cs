@@ -575,7 +575,6 @@ namespace ImperativeLang.SyntaxAnalyzer
                 TokenType.Equal => Operator.Equal,
                 TokenType.NotEqual => Operator.NotEqual,
 
-                TokenType.Not => Operator.Not,
                 TokenType.And => Operator.And,
                 TokenType.Or => Operator.Or,
                 TokenType.Xor => Operator.Xor,
