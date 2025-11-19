@@ -532,6 +532,90 @@ namespace ImperativeLang.CodeGen
 
         private void WriteRoutineMethods(ProgramNode AST)
         {
+            foreach (var routine in AST.declarations.OfType<RoutineDeclarationNode>())
+            {
+                string returnTypeString = "";
+                if (routine.RoutineSymbol!.ReturnType is PrimitiveTypeInfo p)
+                {
+                    switch (p.Type)
+                    {
+                        case PrimitiveType.Boolean:
+                        case PrimitiveType.Integer:
+                            returnTypeString = "int32";
+                            break;
+                        case PrimitiveType.Real:
+                            returnTypeString = "float32";
+                            break;
+                    }
+                }
+                else if (routine.RoutineSymbol!.ReturnType is ArrayTypeInfo a)
+                {
+                    returnTypeString = IDToIlName[a.Name].names.Peek();
+                }
+                else if (routine.RoutineSymbol!.ReturnType is RecordTypeInfo r)
+                {
+                    returnTypeString = IDToIlName[r.Name].names.Peek();
+                } 
+                else
+                {
+                    returnTypeString = "void";
+                }
+
+                _writer.WriteLine($".method public {returnTypeString} {routine.Name}({GenerateRoutineArguments(routine.Parameters)}) cil managed");
+                _writer.WriteLine("{");
+                _writer.WriteLine("ret");
+                _writer.WriteLine("}");
+            }
+        }
+
+        private string GenerateRoutineArguments(List<VariableDeclarationNode> arguments)
+        {
+            string result = "";
+            for (int i = 0; i < arguments.Count(); i++)
+            {
+                var argument = arguments[i];
+                if (argument.VariableSymbol!.Type is PrimitiveTypeInfo p)
+                {
+                    string typeString = "";
+                    switch (p.Type)
+                    {
+                        case PrimitiveType.Boolean:
+                        case PrimitiveType.Integer:
+                            typeString = "int32";
+                            break;
+                        case PrimitiveType.Real:
+                            typeString = "float32";
+                            break;
+                    }
+                    result += $"{typeString} {argument.Name}";
+                }
+                else if (argument.VariableSymbol!.Type is ArrayTypeInfo a)
+                {
+                    result += $"valuetype {IDToIlName[a.Name].names.Peek()} {argument.Name}";
+                } 
+                else if (argument.VariableSymbol!.Type is RecordTypeInfo r)
+                {
+                    result += $"valuetype {IDToIlName[r.Name].names.Peek()} {argument.Name}";    
+                }
+
+                if (i != arguments.Count() - 1)
+                {
+                    result += ", ";
+                }
+            }
+            return result;
+        }
+
+        private void GenerateRoutineBody(RoutineBodyNode body)
+        {
+            if (body is ExpressionRoutineBodyNode expression)
+            {
+                
+            }
+        }
+
+        private void GenerateExpression(ExpressionNode expression)
+        {
             
         }
     }
