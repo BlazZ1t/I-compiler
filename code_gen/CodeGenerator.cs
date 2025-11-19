@@ -668,7 +668,7 @@ namespace ImperativeLang.CodeGen
                 GenerateLocals(blockBody.Body, context);
                 localsCounter = 0;
                 _writer.WriteLine(")");
-                GenerateScopeBody(blockBody.Body, context);
+                GenerateScopeBody(blockBody.Body, context, 0);
 
             }
         }
@@ -714,20 +714,34 @@ namespace ImperativeLang.CodeGen
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(recordTypeInfo)} {ilName}");
                     }
                     localsCounter++;
-                }else if(node is IfStatementNode ifNode)
+                }
+                else if(node is IfStatementNode ifNode)
                 {
                     GenerateLocals(ifNode.ThenBody, context);
                     if(ifNode.ElseBody != null)
                     {
                         GenerateLocals(ifNode.ElseBody, context);
                     }
-                }else if(node is ForLoopNode forNode)
+                }
+                else if(node is ForLoopNode forNode)
                 {
+                    if (forNode.IsArrayTraversal)
+                    {
+                        
+                    } 
+                    else
+                    {
+                        VariableDeclarationNode iteratorVariable = new VariableDeclarationNode(forNode.Iterator, new PrimitiveTypeNode(PrimitiveType.Integer));
+                        iteratorVariable.VariableSymbol = new VariableSymbol(forNode.Iterator, new PrimitiveTypeInfo(PrimitiveType.Integer));
+                        GenerateLocals(new List<Node>([iteratorVariable]), context);
+                    }
                     GenerateLocals(forNode.Body, context);
-                }else if(node is WhileLoopNode whileNode)
+                }
+                else if(node is WhileLoopNode whileNode)
                 {
                     GenerateLocals(whileNode.Body, context);
-                }else if(node is TypeDeclarationNode typeDec)
+                }
+                else if(node is TypeDeclarationNode typeDec)
                 {
                     TypeInfo type = typeDec.TypeSymbol!.Type;
 
@@ -757,7 +771,7 @@ namespace ImperativeLang.CodeGen
         }
 
         
-        private void GenerateScopeBody(List<Node> body, string context)
+        private int GenerateScopeBody(List<Node> body, string context, int bodyCount)
         {
             List<string> typeScope = new List<string>();
             List<string> varScope = new List<string>();
@@ -841,11 +855,59 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (node is ForLoopNode forLoopNode)
                 {
-                    
+                    bodyCount++;
+                    if (forLoopNode.IsArrayTraversal)
+                    {
+                        
+                    }
+                    else
+                    {
+                        WriteExpression(forLoopNode.Range.Start);
+                        _writer.WriteLine("stloc ВСТАВИТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
+                        _writer.WriteLine();
+                        _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
+                        int bodiesInside = GenerateScopeBody(forLoopNode.Body, context, bodyCount);
+
+                        _writer.WriteLine("ldloc ВСТАВИТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        _writer.WriteLine($"ldc.i4 {(forLoopNode.Reverse ? "-1" : "1")}");
+                        _writer.WriteLine("add");
+                        _writer.WriteLine("stloc ТРАХНУТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        _writer.WriteLine();
+                        _writer.WriteLine($"CHECK_LOOP_CONDITION_{bodyCount}:");
+
+                        _writer.WriteLine($"ldloc ВСТАВИТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        if (forLoopNode.Reverse)
+                        {
+                            WriteExpression(forLoopNode.Range.End!);
+                        }
+                        else
+                        {
+                            WriteExpression(forLoopNode.Range.Start);
+                        }
+                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "blt")}.s LOOP_BODY_{bodyCount}");
+                        _writer.WriteLine();
+                        _writer.WriteLine($"LOOP_END_{bodyCount}:");
+                        bodyCount = bodiesInside;
+                    }
                 }
                 else if (node is IfStatementNode ifStatementNode)
                 {
-                    
+                    bodyCount++;
+                    WriteExpression(ifStatementNode.Condition);
+                    _writer.WriteLine($"brfalse.s {(ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count() > 0 ? $"ELSE_{bodyCount}" : $"IF_END_{bodyCount}")}");
+                    var bodiesInside = GenerateScopeBody(ifStatementNode.ThenBody, context, bodyCount) - bodyCount;
+                    _writer.WriteLine($"br IF_END_{bodyCount}");
+
+                    if (ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count() > 0)
+                    {
+                        _writer.WriteLine($"ELSE_{bodyCount}:");
+                        bodiesInside += GenerateScopeBody(ifStatementNode.ElseBody, context, bodyCount) - bodyCount;
+                    }
+
+                    _writer.WriteLine($"IF_END_{bodyCount}:");
+                    bodyCount = bodiesInside;
+
                 }
                 else if (node is ReturnStatementNode returnStatementNode)
                 {
@@ -857,7 +919,18 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (node is WhileLoopNode whileLoopNode)
                 {
-                    
+                    bodyCount++;
+                    _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
+
+                    _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
+                    int bodiesInside = GenerateScopeBody(whileLoopNode.Body, context, bodyCount);
+                    _writer.WriteLine("");
+                    _writer.WriteLine($"CHECK_LOOP_CONDITION_{bodyCount}:");
+                    WriteExpression(whileLoopNode.Condition);
+                    _writer.WriteLine($"brtrue.s LOOP_BODY_{bodyCount}");
+                    _writer.WriteLine("");
+                    _writer.WriteLine($"LOOP_END_{bodyCount}:");
+                    bodyCount = bodiesInside;
                 }
 
                 _writer.WriteLine("");
@@ -872,6 +945,8 @@ namespace ImperativeLang.CodeGen
             {
                 VariableIdentifierToIlName[el].names.Pop();
             }
+
+            return bodyCount;
         }
 
         private void Assignment(AssignmentNode assignmentNode)
@@ -927,7 +1002,6 @@ namespace ImperativeLang.CodeGen
                     }
                 }
             }
-
         }
 
         private void WriteExpression(ExpressionNode expression)

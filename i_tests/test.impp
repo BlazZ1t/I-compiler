@@ -8,7 +8,14 @@ type arrayInt is array [10] integer
 
 var x : Point
 
+<<<<<<< HEAD
+routine main(a : integer) is
+    for i in 1 .. 5 loop
+        print 5
+    end
+=======
 routine main(arg : integer) is
+>>>>>>> 9a06c556892a0d9d2918270ee3857edc3aff1f60
     var x : integer is 15
     var y : real is 5
     var p : Point
