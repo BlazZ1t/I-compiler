@@ -6,8 +6,7 @@ end
 var x : Point
 
 routine main(a : integer) is
-    // var x : integer is 15
-    // var y : real is 5
-    // print y/3, x/3, a
-    print 10/2
+    var x : integer is 15
+    var y : real is 5
+    print x/3, y/3, a
 end

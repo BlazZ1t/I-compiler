@@ -840,6 +840,7 @@ namespace ImperativeLang.CodeGen
             if(expression is BinaryExpressionNode binaryExpression)
             {
                 WriteExpression(binaryExpression.Left);
+                if (expression.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Real}) _writer.WriteLine("conv.r4");
                 WriteExpression(binaryExpression.Right);
 
                 switch (binaryExpression.Operator)
@@ -854,7 +855,6 @@ namespace ImperativeLang.CodeGen
                         _writer.WriteLine("mul");
                         break;
                     case Operator.Divide:
-                        _writer.WriteLine("conv.r4");
                         _writer.WriteLine("conv.r4");
                         _writer.WriteLine("div");
                         break;
@@ -919,7 +919,7 @@ namespace ImperativeLang.CodeGen
                 {
                     _writer.WriteLine($"ldc.i4 {i}");
                 }
-                else if (literal.Value is float f)
+                else if (literal.Value is double f)
                 {
                     _writer.WriteLine($"ldc.r4 {f}");
                 }
