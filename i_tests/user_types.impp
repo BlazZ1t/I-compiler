@@ -41,6 +41,10 @@ routine integerArray() : integer is
         intArray[11 - i] := i
     end
 
+    for i in intArray loop
+        i = 10
+    end
+
     for i in 1 .. 5 loop
         sum := sum + intArray[i]
     end

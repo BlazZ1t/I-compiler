@@ -8,18 +8,16 @@ type arrayInt is array [10] integer
 
 var x : Point
 
+routine assignY(value : integer) : integer
+
 routine main(arg : integer) is
-    for i in 1 .. 5 loop
+    type IntegerArray is array [10] integer
+    var intArray : IntegerArray
+    for i in intArray loop
         print i
     end
-    var x : integer is 15
-    var y : real is 5
-    var p : Point
-    var a : arrayInt
-    x := 10
-    p.x := 5
-    a[3] := 4
+end
 
-    print x, p.x, a[3], a[0], p.y
-
+routine assignY(value : integer) : integer is
+    return value
 end
