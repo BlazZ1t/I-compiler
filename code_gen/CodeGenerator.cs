@@ -635,15 +635,15 @@ namespace ImperativeLang.CodeGen
                             typeString = "float32";
                             break;
                     }
-                    result += $"{typeString} {argument.Name}";
+                    result += $"{typeString}";
                 }
                 else if (argument.VariableSymbol!.Type is ArrayTypeInfo a)
                 {
-                    result += $"valuetype {TypeIdentifierToIlName[a.Name].names.Peek()} {argument.Name}";
+                    result += $"valuetype {TypeIdentifierToIlName[a.Name].names.Peek()}";
                 } 
                 else if (argument.VariableSymbol!.Type is RecordTypeInfo r)
                 {
-                    result += $"valuetype {TypeIdentifierToIlName[r.Name].names.Peek()} {argument.Name}";    
+                    result += $"valuetype {TypeIdentifierToIlName[r.Name].names.Peek()}";    
                 }
 
                 if (i != arguments.Count() - 1)
@@ -1073,11 +1073,20 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (node is ReturnStatementNode returnStatementNode)
                 {
-                    
+                    if (returnStatementNode.Value != null)
+                    {
+                        WriteExpression(returnStatementNode.Value);
+                    }
+                    _writer.WriteLine("ret");
                 }
                 else if (node is RoutineCallStatementNode routineCallStatementNode)
                 {
-                    
+                    WriteExpression(routineCallStatementNode.Call);
+
+                    if (routineCallStatementNode.Call.RoutineSymbol!.ReturnType != null)
+                    {
+                        _writer.WriteLine("pop");
+                    }
                 }
                 else if (node is WhileLoopNode whileLoopNode)
                 {

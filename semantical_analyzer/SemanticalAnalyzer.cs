@@ -34,11 +34,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     AddRoutineDeclaration(routineDeclaration);
                     TraverseRoutineBody(routineDeclaration);
                 }
+            }
 
-                if (checkForwardDeclarations != 0)
-                {
-                    throw new AnalyzerException("Not all forward-declared routines are defined");
-                }
+            if (checkForwardDeclarations != 0)
+            {
+                throw new AnalyzerException("Not all forward-declared routines are defined");
             }
 
             return AST;
@@ -276,6 +276,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             {
                                 throw new AnalyzerException($"Expected {routineSymbol.Parameters.Count} arguments. Got {routineCallStatementNode.Call.Arguments.Count}.", routineCallStatementNode.Line, routineCallStatementNode.Column);
                             }
+
+                            routineCallStatementNode.Call.RoutineSymbol = routineSymbol;
 
                             for (int j = 0; j < routineSymbol.Parameters.Count; j++)
                             {
@@ -534,11 +536,19 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 Symbol? routineSymbol = LookupSymbol(routineCallNode.Name);
 
-                if (routineSymbol != null && routineSymbol is RoutineSymbol routine)
+                if (routineSymbol is RoutineSymbol routine)
                 {
                     if (routine.ReturnType == null)
                     {
                         throw new AnalyzerException("Routines without return type cannot be used in expressions", routineCallNode.Line, routineCallNode.Column);
+                    }
+                    for (int i = 0; i < routine.Parameters.Count(); i++)
+                    {
+                        CheckAssignmentPossibility(routine.Parameters[i].Type, ResolveExpressionType(routineCallNode.Arguments[i]), routineCallNode.Arguments[i]);
+                        if (routineCallNode.Arguments[i] is ModifiablePrimaryNode modifiablePrimaryArgument)
+                        {
+                            modifiablePrimaryArgument.VariableSymbol = routine.Parameters[i];
+                        }
                     }
                     routineCallNode.RoutineSymbol = routine;
                     return routine.ReturnType;
