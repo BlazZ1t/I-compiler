@@ -391,7 +391,7 @@ namespace ImperativeLang.CodeGen
             List<RoutineSymbol> routines = new List<RoutineSymbol>();
             foreach(var routine in AST.declarations.OfType<RoutineDeclarationNode>())
             {
-                routines.Add(routine.RoutineSymbol!);
+                if (!routine.RoutineSymbol!.IsForwardDeclared) routines.Add(routine.RoutineSymbol!);
             }
             _writer.WriteLine("");
             _writer.WriteLine(".method public static void Main(string[] args) cil managed");
@@ -534,6 +534,7 @@ namespace ImperativeLang.CodeGen
         {
             foreach (var routine in AST.declarations.OfType<RoutineDeclarationNode>())
             {
+                if (routine.RoutineSymbol!.IsForwardDeclared) continue;
                 string returnTypeString = "";
                 if (routine.RoutineSymbol!.ReturnType is PrimitiveTypeInfo p)
                 {

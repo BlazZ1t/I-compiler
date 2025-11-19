@@ -7,6 +7,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         private ProgramNode AST;
         private Stack<Dictionary<string, Symbol>> Scope = new Stack<Dictionary<string, Symbol>>();
 
+        private int checkForwardDeclarations = 0;
+
 
         public SemanticalAnalyzer(ProgramNode ast)
         {
@@ -31,6 +33,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                 {
                     AddRoutineDeclaration(routineDeclaration);
                     TraverseRoutineBody(routineDeclaration);
+                }
+
+                if (checkForwardDeclarations != 0)
+                {
+                    throw new AnalyzerException("Not all forward-declared routines are defined");
                 }
             }
 
@@ -350,6 +357,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
     // declarations by replacing placeholders and keeps signature information.
     private void AddRoutineDeclaration(RoutineDeclarationNode routineDeclarationNode)
         {
+            if (routineDeclarationNode.Name == "global") throw new AnalyzerException("Name 'global' is reserved and can not be used as routine name", routineDeclarationNode.Line, routineDeclarationNode.Column);
             if (Scope.Peek().ContainsKey(routineDeclarationNode.Name))
             {
                 if (Scope.Peek()[routineDeclarationNode.Name] is RoutineSymbol routineSymbol)
@@ -358,17 +366,20 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     {
                         throw new AnalyzerException($"Routine '{routineDeclarationNode.Name}' already exists in the scope", routineDeclarationNode.Line, routineDeclarationNode.Column);
                     }
-
-                    Scope.Peek()[routineDeclarationNode.Name] = new RoutineSymbol(routineDeclarationNode.Name,
+                    var newSymbol = new RoutineSymbol(routineDeclarationNode.Name,
                         routineDeclarationNode.ReturnType == null
                         ? null
                         : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
+                    Scope.Peek()[routineDeclarationNode.Name] = newSymbol;
+                    routineDeclarationNode.RoutineSymbol = newSymbol;
+                    checkForwardDeclarations--;
                     return;
                 } else
                 {
                     throw new AnalyzerException("Something went terribely wrong with routine declarations", routineDeclarationNode.Line, routineDeclarationNode.Column);
                 }
             }
+            if (routineDeclarationNode.Body == null) checkForwardDeclarations++;
             RoutineSymbol result = new RoutineSymbol(routineDeclarationNode.Name,
                 routineDeclarationNode.ReturnType == null
                 ? null
