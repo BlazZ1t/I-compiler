@@ -9,9 +9,13 @@ type arrayInt is array [10] integer
 var x : Point
 
 routine main(arg : integer) is
-    for i in 1 .. 5 loop
+
+    type IntegerArray is array [10] integer
+    var intArray : IntegerArray
+    for i in intArray loop
         print i
     end
+
     var x : integer is 15
     var y : real is 5
     var p : Point
