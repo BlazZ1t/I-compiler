@@ -727,7 +727,58 @@ namespace ImperativeLang.CodeGen
                 {
                     if (forNode.IsArrayTraversal)
                     {
+                        if (localsCounter!=0)
+                        {
+                            _writer.Write(",");
+                        }
                         
+                        TypeInfo type = new PrimitiveTypeInfo(PrimitiveType.Integer);
+                        if (!VariableIdentifierToIlName.ContainsKey(forNode.Iterator))
+                        {
+                            VariableIdentifierToIlName.Add(forNode.Iterator, new IlInfo());
+                        }
+                        VariableIdentifierToIlName[forNode.Iterator].id++;
+                        string ilName = $"{forNode.Iterator}@{VariableIdentifierToIlName[forNode.Iterator].id}";
+                        varScope.Add(forNode.Iterator);
+
+                        if(type is PrimitiveTypeInfo primitiveTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loc {localsCounter}");
+                            _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(primitiveTypeInfo)} {ilName}");
+                        }
+                        localsCounter++;
+
+
+                        if (localsCounter!=0)
+                        {
+                            _writer.Write(",");
+                        }
+                        
+                        type = ((ArrayTypeInfo)forNode.Range.Start.ResolvedType!).ElementType;
+                        if (!VariableIdentifierToIlName.ContainsKey(forNode.Iterator))
+                        {
+                            VariableIdentifierToIlName.Add(forNode.Iterator, new IlInfo());
+                        }
+                        VariableIdentifierToIlName[forNode.Iterator].id++;
+                        ilName = $"{forNode.Iterator}@{VariableIdentifierToIlName[forNode.Iterator].id}";
+                        varScope.Add(forNode.Iterator);
+
+                        if(type is PrimitiveTypeInfo primitiveTypeInfo1)
+                        {
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loc {localsCounter}");
+                            _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(primitiveTypeInfo1)} {ilName}");
+                        }
+                        if (type is ArrayTypeInfo arrayTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loca {localsCounter}");
+                            _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(arrayTypeInfo)} {ilName}");
+                        }
+                        else if(type is RecordTypeInfo recordTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loca {localsCounter}");
+                            _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(recordTypeInfo)} {ilName}");
+                        }
+                        localsCounter++;
                     } 
                     else
                     {
@@ -811,7 +862,7 @@ namespace ImperativeLang.CodeGen
                     {
                         VariableIdentifierToIlName[varDec.Name].names.Push($"loc.{localsCounter}");
                     }
-                    if (type is ArrayTypeInfo arrayTypeInfo)
+                    else if (type is ArrayTypeInfo arrayTypeInfo)
                     {
                         VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
                         _writer.WriteLine($"ld{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
@@ -875,7 +926,94 @@ namespace ImperativeLang.CodeGen
                     bodyCount++;
                     if (forLoopNode.IsArrayTraversal)
                     {
+                        int Start = 0;
+                        int End = ((ArrayTypeInfo)forLoopNode.Range.Start.ResolvedType!).Size;
                         
+
+
+                        TypeInfo type = new PrimitiveTypeInfo(PrimitiveType.Integer);
+                        
+                        if (!VariableIdentifierToIlName.ContainsKey(forLoopNode.Iterator))
+                        {
+                            VariableIdentifierToIlName.Add(forLoopNode.Iterator, new IlInfo());
+                        }
+                        VariableIdentifierToIlName[forLoopNode.Iterator].id++;
+                        string ilName = $"{forLoopNode.Iterator}@{VariableIdentifierToIlName[forLoopNode.Iterator].id}";
+                        varScope.Add(forLoopNode.Iterator);
+
+                        if(type is PrimitiveTypeInfo primitiveTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc.{localsCounter}");
+                        }
+                        localsCounter++;
+
+                        string i_int = VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek();
+
+
+                        type = ((ArrayTypeInfo)forLoopNode.Range.Start.ResolvedType!).ElementType;
+                        TypeInfo oldType = (ArrayTypeInfo)forLoopNode.Range.Start.ResolvedType!;
+                        if (!VariableIdentifierToIlName.ContainsKey(forLoopNode.Iterator))
+                        {
+                            VariableIdentifierToIlName.Add(forLoopNode.Iterator, new IlInfo());
+                        }
+                        VariableIdentifierToIlName[forLoopNode.Iterator].id++;
+                        ilName = $"{forLoopNode.Iterator}@{VariableIdentifierToIlName[forLoopNode.Iterator].id}";
+                        varScope.Add(forLoopNode.Iterator);
+
+                        if(type is PrimitiveTypeInfo primitiveTypeInfo1)
+                        {
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc.{localsCounter}");
+                        }
+                        else if (type is ArrayTypeInfo arrayTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loca {localsCounter}");
+                            _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+                            _writer.WriteLine($"call instance void {ResolveIlTypeName(arrayTypeInfo)}::.ctor()");
+                        }
+                        else if(type is RecordTypeInfo recordTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loca {localsCounter}");
+                            _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+                            _writer.WriteLine($"call instance void {ResolveIlTypeName(recordTypeInfo)}::.ctor()");
+                        }
+                        localsCounter++;
+
+
+                        _writer.WriteLine($"ld.i4 {(!forLoopNode.Reverse ? Start : End-1)}");
+                        _writer.WriteLine($"st{i_int}");
+                        WriteExpression(forLoopNode.Range.Start);
+                        _writer.WriteLine($"ld{i_int}");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+                        
+                        
+                        _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
+                        _writer.WriteLine();
+                        _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
+                        int bodiesInside = GenerateScopeBody(forLoopNode.Body, context, bodyCount);
+
+
+                        _writer.WriteLine($"ld{i_int}");
+                        _writer.WriteLine($"ldc.i4 {(forLoopNode.Reverse ? "-1" : "1")}");
+                        _writer.WriteLine("add");
+                        _writer.WriteLine($"st{i_int}");
+
+                        WriteExpression(forLoopNode.Range.Start);
+                        _writer.WriteLine($"ld{i_int}");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+
+
+                        _writer.WriteLine();
+                        _writer.WriteLine($"CHECK_LOOP_CONDITION_{bodyCount}:");
+
+                        _writer.WriteLine($"ld{i_int}");
+                        _writer.WriteLine($"ld.i4 {(!forLoopNode.Reverse ? End-1 : Start)}");
+                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "blt")}.s LOOP_BODY_{bodyCount}");
+                        _writer.WriteLine();
+                        _writer.WriteLine($"LOOP_END_{bodyCount}:");
+                        bodyCount = bodiesInside;
+
                     }
                     else
                     {
