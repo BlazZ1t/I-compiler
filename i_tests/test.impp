@@ -3,10 +3,20 @@ type Point is record
     var y : integer
 end
 
+
+type arrayInt is array [10] integer
+
 var x : Point
 
-routine main(a : integer) is
+routine main(arg : integer) is
     var x : integer is 15
     var y : real is 5
-    print x/3, y/3, a
+    var p : Point
+    var a : arrayInt
+    x := 10
+    p.x := 5
+    a[3] := 4
+
+    print x, p.x, a[3], a[0], p.y
+
 end
