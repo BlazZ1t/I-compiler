@@ -301,12 +301,27 @@ namespace ImperativeLang.CodeGen
 
             _writer.Write(".method public hidebysig specialname rtspecialname instance void .ctor() cil managed");
 
-             _writer.WriteLine("{");
+            _writer.WriteLine("{");
+            _writer.WriteLine(".locals init (");
+            int i = 0;
+            foreach (var (fieldName, ilFieldType) in ilFieldTypes)
+            {
+                if (ilFieldType != "int32" && ilFieldType != "float32")
+                {
+                    if (i != 0)
+                    {
+                        _writer.Write(",");
+                    }
+                    _writer.WriteLine($"[{i}] {ilFieldType} tempPoint_{i}");
+                    i++;
+                }
+            }
+            _writer.WriteLine(")");
             _writer.WriteLine(".maxstack 8");
 
             _writer.WriteLine("ldarg.0");
             _writer.WriteLine("call instance void [mscorlib]System.ValueType::.ctor()");
-
+            i = 0;
             foreach (var (fieldName, ilFieldType) in ilFieldTypes)
             {
                 _writer.WriteLine("ldarg.0");
@@ -323,9 +338,10 @@ namespace ImperativeLang.CodeGen
                 }
                 else
                 {
-                    _writer.WriteLine("ldloca.s tempPoint");
-                    _writer.WriteLine($"call instance void valuetype {ilFieldType}::.ctor()");
-                    _writer.WriteLine($"stfld valuetype {ilFieldType} {className}::{fieldName}");
+                    _writer.WriteLine($"ldloca.s {i}");
+                    i++;
+                    _writer.WriteLine($"call instance void {ilFieldType}::.ctor()");
+                    _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
                 }
             }
 

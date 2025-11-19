@@ -1,84 +1,71 @@
-type Point is record
-    var x : integer
-    var y : integer
+// type Point is record
+//     var x : integer
+//     var y : integer
+// end
+
+// var p : Point
+
+
+// type PointArray is array [10] Point
+
+
+// type IntArray is array [20] int
+
+// var points : PointArray
+
+// routine test() : integer
+
+// routine test() : integer is
+//     return 5
+// end
+
+// routine pointRecord(xPosition : integer, yPosition : integer, points : PointArray) : integer is
+//     p.x := xPosition
+//     p.y := yPosition
+//     return p.x
+// end
+
+// routine integerArray() : integer is
+//     type IntegerArray is array [10] integer
+//     var intArray : IntegerArray
+//     var sum : integer is 0
+
+//     for i in 10 .. 1 reverse loop
+//         intArray[11 - i] := i
+//     end
+
+//     for i in intArray loop
+//         i = 10
+//     end
+
+//     for i in 1 .. 5 loop
+//         sum := sum + intArray[i]
+//     end
+
+//     return sum
+// end
+
+type Person is record
+    var age : integer
+    var balance : integer
 end
 
-var p : Point
-
-type int is integer
-
-var x : int
-
-var z : boolean
-
-var y : real
-
-type PointArray is array [10] Point
-
-
-type IntArray is array [20] int
-
-var points : PointArray
-
-routine test() : integer
-
-routine test() : integer is
-    return 5
-end
-
-routine pointRecord(xPosition : integer, yPosition : integer, points : PointArray) : integer is
-    p.x := xPosition
-    p.y := yPosition
-    return p.x
-end
-
-routine integerArray() : integer is
-    type IntegerArray is array [10] integer
-    var intArray : IntegerArray
-    var sum : integer is 0
-
-    for i in 10 .. 1 reverse loop
-        intArray[11 - i] := i
-    end
-
-    for i in intArray loop
-        i = 10
-    end
-
-    for i in 1 .. 5 loop
-        sum := sum + intArray[i]
-    end
-
-    return sum
-end
-
-routine nestedRecord() is
-    type Person is record
-        var age : integer
-        var balance : integer
-    end
-
-    if true then
-        type Person is record
-            var age : integer
-            var balance : integer
-        end
-        type Family is record
-            var father : Person
-            var mother : Person
-            var son : Person
-        end
-    end
-
-    type Family is record
+type Family is record
         var father : Person
         var mother : Person
         var son : Person
-    end
 end
 
-routine typeAlias() : integer is
-    type int is integer
-    var x : int is 5
-    return x
+type FamilyArray is array [10] Family
+
+routine nestedRecord() is
+    var families : FamilyArray
+
+    families[1].father.age := 35
+    print families[1].father.age
+    for i in 1 .. 5 loop
+        families[1].father.age := families[1].father.age + 1 
+    end
+    print families[1].father.age
+
 end
