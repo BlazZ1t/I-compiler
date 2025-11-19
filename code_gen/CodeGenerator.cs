@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Runtime;
 using ImperativeLang.SemanticalAnalyzerNS;
 using ImperativeLang.SyntaxAnalyzer;
 
@@ -152,11 +153,11 @@ namespace ImperativeLang.CodeGen
             }
             else if (typeInfo is ArrayTypeInfo a)
             {
-                ilTypeName = TypeIdentifierToIlName[a.Name].names.Peek();
+                ilTypeName = "valuetype " + TypeIdentifierToIlName[a.Name].names.Peek();
             }
             else if (typeInfo is RecordTypeInfo r)
             {
-                ilTypeName = TypeIdentifierToIlName[r.Name].names.Peek();
+                ilTypeName = "valuetype " + TypeIdentifierToIlName[r.Name].names.Peek();
             }
             return ilTypeName;
         }
@@ -298,17 +299,7 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine($".field public {ilFieldTypes[field]} {field}");
             }
 
-            _writer.Write(".method public hidebysig specialname rtspecialname instance void .ctor(");
-
-            bool first = true;
-            foreach (var (fieldName, ilFieldType) in ilFieldTypes)
-            {
-                if (!first) _writer.Write(", ");
-                first = false;
-
-                _writer.Write($"{ilFieldType} {fieldName}");
-            }
-            _writer.WriteLine(") cil managed");
+            _writer.Write(".method public hidebysig specialname rtspecialname instance void .ctor() cil managed");
 
              _writer.WriteLine("{");
             _writer.WriteLine(".maxstack 8");
@@ -316,13 +307,26 @@ namespace ImperativeLang.CodeGen
             _writer.WriteLine("ldarg.0");
             _writer.WriteLine("call instance void [mscorlib]System.ValueType::.ctor()");
 
-            int index = 1;
             foreach (var (fieldName, ilFieldType) in ilFieldTypes)
             {
                 _writer.WriteLine("ldarg.0");
-                _writer.WriteLine($"ldarg.{index}");
-                _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
-                index++;
+                if (ilFieldType == "int32")
+                {
+                    _writer.WriteLine("ldc.i4.0");
+                    _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
+                }
+                else if(ilFieldType == "float32")
+                {
+                    _writer.WriteLine("ldc.i4.0");
+                    _writer.WriteLine("conv.r4");
+                    _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
+                }
+                else
+                {
+                    _writer.WriteLine("ldloca.s tempPoint");
+                    _writer.WriteLine($"call instance void valuetype {ilFieldType}::.ctor()");
+                    _writer.WriteLine($"stfld valuetype {ilFieldType} {className}::{fieldName}");
+                }
             }
 
             _writer.WriteLine("ret");
@@ -344,10 +348,10 @@ namespace ImperativeLang.CodeGen
                     };
 
                 case RecordTypeInfo r:
-                    return $"valuetype {objectNames[fieldName]}";
+                    return $"{objectNames[fieldName]}";
 
                 case ArrayTypeInfo a:
-                    return $"valuetype {objectNames[fieldName]}[]";
+                    return $"{objectNames[fieldName]}[]";
 
                 default:
                     throw new Exception("Unknown field type");
@@ -662,6 +666,7 @@ namespace ImperativeLang.CodeGen
             {
                 _writer.WriteLine(".locals init (");
                 GenerateLocals(blockBody.Body, context);
+                localsCounter = 0;
                 _writer.WriteLine(")");
                 GenerateScopeBody(blockBody.Body, context, 0);
 
@@ -674,17 +679,12 @@ namespace ImperativeLang.CodeGen
         {
             List<string> typeScope = new List<string>();
             List<string> varScope = new List<string>();
-            bool first = true;
             foreach(Node node in body)
             {
                 
                 if(node is VariableDeclarationNode varDec)
                 {
-                    if (first)
-                    {
-                        first = false;
-                    }
-                    else
+                    if (localsCounter!=0)
                     {
                         _writer.Write(",");
                     }
@@ -700,17 +700,17 @@ namespace ImperativeLang.CodeGen
 
                     if(type is PrimitiveTypeInfo primitiveTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc.{localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc {localsCounter}");
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(primitiveTypeInfo)} {ilName}");
                     }
                     if (type is ArrayTypeInfo arrayTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(arrayTypeInfo)} {ilName}");
                     }
                     else if(type is RecordTypeInfo recordTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(recordTypeInfo)} {ilName}");
                     }
                     localsCounter++;
@@ -767,7 +767,7 @@ namespace ImperativeLang.CodeGen
             {
                 VariableIdentifierToIlName[el].names.Pop();
             }
-            localsCounter = 0;
+            
         }
 
         
@@ -796,11 +796,15 @@ namespace ImperativeLang.CodeGen
                     }
                     if (type is ArrayTypeInfo arrayTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
+                        _writer.WriteLine($"ld{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
+                        _writer.WriteLine($"call instance void {ResolveIlTypeName(arrayTypeInfo)}::.ctor()");
                     }
                     else if(type is RecordTypeInfo recordTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
+                        _writer.WriteLine($"ld{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
+                        _writer.WriteLine($"call instance void {ResolveIlTypeName(recordTypeInfo)}::.ctor()");
                     }
                     if(varDec.Initializer != null)
                     {
@@ -847,7 +851,7 @@ namespace ImperativeLang.CodeGen
                 } 
                 else if (node is AssignmentNode assignmentNode)
                 {
-                    
+                    Assignment(assignmentNode);
                 }
                 else if (node is ForLoopNode forLoopNode)
                 {
@@ -931,7 +935,73 @@ namespace ImperativeLang.CodeGen
 
                 _writer.WriteLine("");
             }
+
+            foreach(var el in typeScope)
+            {
+                TypeIdentifierToIlName[el].names.Pop();
+            }
+
+            foreach(var el in varScope)
+            {
+                VariableIdentifierToIlName[el].names.Pop();
+            }
+
             return bodyCount;
+        }
+
+        private void Assignment(AssignmentNode assignmentNode)
+        {
+            ModifiablePrimaryNode modifiablePrimary = assignmentNode.Target;
+            TypeInfo type = modifiablePrimary.VariableSymbol!.Type;
+            TypeInfo oldtype = type;
+            
+            
+            if(modifiablePrimary.AccessPart.Count == 0)
+            {
+                WriteExpression(assignmentNode.Value);
+                _writer.WriteLine($"st{VariableIdentifierToIlName[assignmentNode.Target.BaseName].names.Peek()}");
+                return;
+            }
+
+            _writer.WriteLine($"ld{VariableIdentifierToIlName[modifiablePrimary.BaseName].names.Peek()}");
+
+            for(int i = 0; i < modifiablePrimary.AccessPart.Count; i++)
+            {
+                AccessPart accessPart = modifiablePrimary.AccessPart[i];
+                oldtype = type;
+
+                if(accessPart is FieldAccess fieldAccess)
+                {
+
+                    type = ((RecordTypeInfo)type).Fields[fieldAccess.Name];
+                    if(i == modifiablePrimary.AccessPart.Count - 1)
+                    {
+                        WriteExpression(assignmentNode.Value);
+                        _writer.WriteLine($"stfld {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
+                    }
+                    else
+                    {
+                        _writer.WriteLine($"ldflda {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
+                    }
+                    
+                }
+                else if(accessPart is ArrayAccess arrayAccess)
+                {
+                    if(i == modifiablePrimary.AccessPart.Count - 1)
+                    {
+                        type = ((ArrayTypeInfo)type).ElementType;
+                        WriteExpression(arrayAccess.Index);
+                        WriteExpression(assignmentNode.Value);
+                        _writer.WriteLine($"call instance void {ResolveIlTypeName(oldtype)}::set_Item(int32,{ResolveIlTypeName(type)})");
+                    }
+                    else
+                    {
+                        type = ((ArrayTypeInfo)type).ElementType;
+                        WriteExpression(arrayAccess.Index);
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
+                    }
+                }
+            }
         }
 
         private void WriteExpression(ExpressionNode expression)
@@ -1056,7 +1126,7 @@ namespace ImperativeLang.CodeGen
                     {
                         type = ((ArrayTypeInfo)type).ElementType;
                         WriteExpression(arrayAccess.Index);
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {VariableIdentifierToIlName[modifiablePrimary.BaseName].names.Peek()}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
                     }
                 }
             }
