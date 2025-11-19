@@ -1,0 +1,4 @@
+routine test() : boolean is
+    var x : boolean is not test()
+    return x
+end

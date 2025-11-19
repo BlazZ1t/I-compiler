@@ -20,7 +20,13 @@ type IntArray is array [20] int
 
 var points : PointArray
 
-routine pointRecord(xPosition : integer, yPosition : integer) : integer is
+routine test() : integer
+
+routine test() : integer is
+    return 5
+end
+
+routine pointRecord(xPosition : integer, yPosition : integer, points : PointArray) : integer is
     p.x := xPosition
     p.y := yPosition
     return p.x
