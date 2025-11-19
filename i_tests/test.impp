@@ -6,6 +6,9 @@ end
 var x : Point
 
 routine main(a : integer) is
+    for i in 1 .. 5 loop
+        print 5
+    end
     var x : integer is 15
     var y : real is 5
     print x/3, y/3, a

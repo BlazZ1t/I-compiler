@@ -162,7 +162,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 if (TryEvaluateExpression(forLoopNode.Range.Start, out object rangeStartNum) && TryEvaluateExpression(forLoopNode.Range.End, out object rangeEndNum))
                                 {
                                     forLoopNode.Range.Start = new LiteralNode((int)rangeStartNum, PrimitiveType.Integer, forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
-                                    forLoopNode.Range.Start = new LiteralNode((int)rangeEndNum, PrimitiveType.Integer, forLoopNode.Range.End.Line, forLoopNode.Range.End.Column);
+                                    forLoopNode.Range.End = new LiteralNode((int)rangeEndNum, PrimitiveType.Integer, forLoopNode.Range.End.Line, forLoopNode.Range.End.Column);
                                     // If range is known at compile-time, warn when it cannot iterate
                                     if (!forLoopNode.Reverse && (int)rangeEndNum < (int)rangeStartNum)
                                     {
