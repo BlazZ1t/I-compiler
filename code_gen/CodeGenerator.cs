@@ -830,7 +830,32 @@ namespace ImperativeLang.CodeGen
                             _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(float32)");
                         }
                     }
+                } 
+                else if (node is AssignmentNode assignmentNode)
+                {
+                    
                 }
+                else if (node is ForLoopNode forLoopNode)
+                {
+                    
+                }
+                else if (node is IfStatementNode ifStatementNode)
+                {
+                    
+                }
+                else if (node is ReturnStatementNode returnStatementNode)
+                {
+                    
+                }
+                else if (node is RoutineCallStatementNode routineCallStatementNode)
+                {
+                    
+                }
+                else if (node is WhileLoopNode whileLoopNode)
+                {
+                    
+                }
+
                 _writer.WriteLine("");
             }
         }
