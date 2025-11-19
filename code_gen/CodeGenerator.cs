@@ -593,6 +593,16 @@ namespace ImperativeLang.CodeGen
                 {
                     returnTypeString = "void";
                 }
+                int argCount = 0;
+                foreach (var arg in routine.Parameters)
+                {
+                    if (!VariableIdentifierToIlName.ContainsKey(arg.Name))
+                    {
+                        VariableIdentifierToIlName[arg.Name] = new IlInfo();
+                    }
+                    VariableIdentifierToIlName[arg.Name].names.Push((arg.VariableSymbol!.Type is PrimitiveTypeInfo ? "arg" : "arga") + $".{argCount}");
+                    argCount++;
+                }
 
                 _writer.WriteLine($".method public static {returnTypeString} {routine.Name}({GenerateRoutineArguments(routine.Parameters)}) cil managed");
                 _writer.WriteLine("{");
@@ -642,7 +652,6 @@ namespace ImperativeLang.CodeGen
 
         private void GenerateRoutineBody(RoutineBodyNode body, string context)
         {
-            
 
 
             if (body is ExpressionRoutineBodyNode expression)
@@ -779,10 +788,15 @@ namespace ImperativeLang.CodeGen
                     {
                         VariableIdentifierToIlName[varDec.Name].names.Push($"loca.{localsCounter}");
                     }
-                    Console.WriteLine(varDec.Name);
                     if(varDec.Initializer != null)
                     {
                         WriteExpression(varDec.Initializer);
+                        if((varDec.Initializer.ResolvedType is PrimitiveTypeInfo p1) 
+                            && (varDec.VariableSymbol.Type is PrimitiveTypeInfo p2)
+                            && (p1.Type != p2.Type))
+                        {
+                            _writer.WriteLine($"conv.{(p2.Type is PrimitiveType.Real ? "r4" : "i4")}");
+                        }
                         _writer.WriteLine($"st{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
                     }
                     localsCounter++;
@@ -806,7 +820,7 @@ namespace ImperativeLang.CodeGen
                     foreach(var expression in print.Expressions)
                     {
                         WriteExpression(expression);
-                        if(((PrimitiveTypeInfo)(expression.ResolvedType)).Type is PrimitiveType.Integer)
+                        if(((PrimitiveTypeInfo)expression.ResolvedType!).Type is PrimitiveType.Integer)
                         {
                             _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(int32)");
                         }
@@ -817,7 +831,7 @@ namespace ImperativeLang.CodeGen
                         }
                     }
                 }
-
+                _writer.WriteLine("");
             }
         }
 
