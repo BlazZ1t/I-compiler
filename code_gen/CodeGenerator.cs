@@ -604,7 +604,7 @@ namespace ImperativeLang.CodeGen
                     {
                         VariableIdentifierToIlName[arg.Name] = new IlInfo();
                     }
-                    VariableIdentifierToIlName[arg.Name].names.Push((arg.VariableSymbol!.Type is PrimitiveTypeInfo ? "arg" : "arga") + $".{argCount}");
+                    VariableIdentifierToIlName[arg.Name].names.Push((arg.VariableSymbol!.Type is PrimitiveTypeInfo ? "arg" : "arga") + $".s {argCount}");
                     argCount++;
                 }
 
@@ -731,9 +731,26 @@ namespace ImperativeLang.CodeGen
                     } 
                     else
                     {
-                        VariableDeclarationNode iteratorVariable = new VariableDeclarationNode(forNode.Iterator, new PrimitiveTypeNode(PrimitiveType.Integer));
-                        iteratorVariable.VariableSymbol = new VariableSymbol(forNode.Iterator, new PrimitiveTypeInfo(PrimitiveType.Integer));
-                        GenerateLocals(new List<Node>([iteratorVariable]), context);
+                        if (localsCounter!=0)
+                        {
+                            _writer.Write(",");
+                        }
+                        
+                        TypeInfo type = new PrimitiveTypeInfo(PrimitiveType.Integer);
+                        if (!VariableIdentifierToIlName.ContainsKey(forNode.Iterator))
+                        {
+                            VariableIdentifierToIlName.Add(forNode.Iterator, new IlInfo());
+                        }
+                        VariableIdentifierToIlName[forNode.Iterator].id++;
+                        string ilName = $"{forNode.Iterator}@{VariableIdentifierToIlName[forNode.Iterator].id}";
+                        varScope.Add(forNode.Iterator);
+
+                        if(type is PrimitiveTypeInfo primitiveTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loc {localsCounter}");
+                            _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(primitiveTypeInfo)} {ilName}");
+                        }
+                        localsCounter++;
                     }
                     GenerateLocals(forNode.Body, context);
                 }
@@ -862,29 +879,36 @@ namespace ImperativeLang.CodeGen
                     }
                     else
                     {
-                        WriteExpression(forLoopNode.Range.Start);
-                        _writer.WriteLine("stloc ВСТАВИТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        TypeInfo type = new PrimitiveTypeInfo(PrimitiveType.Integer);
+                        if (!VariableIdentifierToIlName.ContainsKey(forLoopNode.Iterator))
+                        {
+                            VariableIdentifierToIlName.Add(forLoopNode.Iterator, new IlInfo());
+                        }
+                        VariableIdentifierToIlName[forLoopNode.Iterator].id++;
+                        string ilName = $"{forLoopNode.Iterator}@{VariableIdentifierToIlName[forLoopNode.Iterator].id}";
+                        varScope.Add(forLoopNode.Iterator);
+
+                        if(type is PrimitiveTypeInfo primitiveTypeInfo)
+                        {
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc.{localsCounter}");
+                        }
+                        localsCounter++;
+                        WriteExpression(!forLoopNode.Reverse ? forLoopNode.Range.Start : forLoopNode.Range.End!);
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
                         int bodiesInside = GenerateScopeBody(forLoopNode.Body, context, bodyCount);
 
-                        _writer.WriteLine("ldloc ВСТАВИТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         _writer.WriteLine($"ldc.i4 {(forLoopNode.Reverse ? "-1" : "1")}");
                         _writer.WriteLine("add");
-                        _writer.WriteLine("stloc ТРАХНУТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         _writer.WriteLine();
                         _writer.WriteLine($"CHECK_LOOP_CONDITION_{bodyCount}:");
 
-                        _writer.WriteLine($"ldloc ВСТАВИТЬ ПЕРЕМЕННУЮ ИТЕРАТОРА");
-                        if (forLoopNode.Reverse)
-                        {
-                            WriteExpression(forLoopNode.Range.End!);
-                        }
-                        else
-                        {
-                            WriteExpression(forLoopNode.Range.Start);
-                        }
+                        _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+                        WriteExpression(forLoopNode.Reverse ? forLoopNode.Range.Start : forLoopNode.Range.End!);
                         _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "blt")}.s LOOP_BODY_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_END_{bodyCount}:");
