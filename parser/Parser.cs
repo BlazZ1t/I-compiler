@@ -372,7 +372,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         {
             ExpressionNode left = ParseFactor();
 
-            while (Check(TokenType.Multiply) || Check(TokenType.Divide) || Check(TokenType.Modulo))
+            while (Check(TokenType.Plus) || Check(TokenType.Minus))
             {
                 Token op = Advance();
                 ExpressionNode right = ParseFactor();
@@ -386,7 +386,7 @@ namespace ImperativeLang.SyntaxAnalyzer
         {
             ExpressionNode left = ParseSummand();
 
-            while (Check(TokenType.Plus) || Check(TokenType.Minus))
+            while (Check(TokenType.Multiply) || Check(TokenType.Divide) || Check(TokenType.Modulo))
             {
                 Token op = Advance();
                 ExpressionNode right = ParseSummand();

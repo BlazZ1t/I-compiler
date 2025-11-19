@@ -341,6 +341,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         {
                             var expression = printStatementNode.Expressions[j];
                             TypeInfo resolvedType = ResolveExpressionType(expression);
+                            if (resolvedType is ArrayTypeInfo || resolvedType is RecordTypeInfo) throw new AnalyzerException("Only primitive objects can be printed", expression.Line, expression.Column);
                             printStatementNode.Expressions[j] = TryFoldExpression(printStatementNode.Expressions[j]);
                             printStatementNode.Expressions[j].ResolvedType = resolvedType;
 
