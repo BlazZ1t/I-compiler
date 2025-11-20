@@ -9,22 +9,30 @@ type Points is array [10] Point
 
 var x : Point
 
-routine assignY(value : integer) : integer
+// routine assignY(value : integer) : integer
+
+routine mult(x : integer, y : integer) : integer is
+    return x*y
+end
 
 routine main(arg : integer) is
     type IntegerArray is array [10] integer
     var intArray : IntegerArray
+    intArray[0] := 5
+    intArray[1] := 3
+    intArray[2] := mult(intArray[0], intArray[1])
+    print intArray[2]
 end
 
 
-routine assignY(value : integer) is
-    type IntegerArray is array [10] integer
-    var intArray : IntegerArray
-    intArray[20] := 5
-    print(intArray[20])
-    for i in 1 .. value loop
-        print intArray[i]
-        intArray[i] := i
-        print intArray[i]
-    end
-end
+
+
+// routine assignY(value : integer) is
+//     type IntegerArray is array [10] integer
+//     var intArray : IntegerArray
+//     for i in 1 .. value loop
+//         print intArray[i]
+//         intArray[i] := i
+//         print intArray[i]
+//     end
+// end

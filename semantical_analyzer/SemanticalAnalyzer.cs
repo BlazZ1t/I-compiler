@@ -545,8 +545,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     for (int i = 0; i < routine.Parameters.Count(); i++)
                     {
                         CheckAssignmentPossibility(routine.Parameters[i].Type, ResolveExpressionType(routineCallNode.Arguments[i]), routineCallNode.Arguments[i]);
-                        if (routineCallNode.Arguments[i] is ModifiablePrimaryNode modifiablePrimaryArgument)
+                        if ((routineCallNode.Arguments[i] is ModifiablePrimaryNode modifiablePrimaryArgument) && (modifiablePrimaryArgument.VariableSymbol == null))
                         {
+                            // Console.WriteLine(modifiablePrimaryArgument.VariableSymbol!.Name);
                             modifiablePrimaryArgument.VariableSymbol = routine.Parameters[i];
                         }
                     }

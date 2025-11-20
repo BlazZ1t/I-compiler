@@ -678,7 +678,8 @@ namespace ImperativeLang.CodeGen
 
             if (body is ExpressionRoutineBodyNode expression)
             {
-                
+                WriteExpression(expression.Expression);
+                _writer.WriteLine("ret");
             }
             else if(body is BlockRoutineBodyNode blockBody)
             {
@@ -1297,6 +1298,7 @@ namespace ImperativeLang.CodeGen
             else if(expression is ModifiablePrimaryNode modifiablePrimary)
             {
                 TypeInfo type = modifiablePrimary.VariableSymbol!.Type;
+                // Console.WriteLine(modifiablePrimary.VariableSymbol!.Name);
                 _writer.WriteLine($"ld{VariableIdentifierToIlName[modifiablePrimary.BaseName].names.Peek()}");
                 foreach(var accessPart in modifiablePrimary.AccessPart)
                 {
@@ -1304,7 +1306,7 @@ namespace ImperativeLang.CodeGen
 
                     if(accessPart is FieldAccess fieldAccess)
                     {
-                        
+                        // Console.WriteLine($"{modifiablePrimary.BaseName}:{type is PrimitiveTypeInfo}, {type is ArrayTypeInfo}, {type is RecordTypeInfo}");
                         type = ((RecordTypeInfo)type).Fields[fieldAccess.Name];
                         if(type is PrimitiveTypeInfo primitiveType)
                         {
@@ -1321,6 +1323,7 @@ namespace ImperativeLang.CodeGen
                     }
                     else if(accessPart is ArrayAccess arrayAccess)
                     {
+                        // Console.WriteLine($"{modifiablePrimary.BaseName}:{type is PrimitiveTypeInfo}, {type is ArrayTypeInfo}, {type is RecordTypeInfo}");
                         type = ((ArrayTypeInfo)type).ElementType;
                         WriteExpression(arrayAccess.Index);
                         _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
