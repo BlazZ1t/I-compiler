@@ -49,12 +49,11 @@ namespace ImperativeLang.CodeGen
                     {
                         TypeIdentifierToIlName.Add(typeDec.Name, new IlInfo());
                     }
-                    TypeIdentifierToIlName[typeDec.Name].id++;
-                    string ilName = $"{typeDec.Name}@global@{TypeIdentifierToIlName[typeDec.Name].id}";
+                    string ilName = $"{typeDec.Name}@global@0";
                     TypeIdentifierToIlName[typeDec.Name].names.Push(ilName);
                     if (type is ArrayTypeInfo arrayTypeInfo)
                     {
-                        GenerateArrayTypeClass(arrayTypeInfo, ilName, ResolveIlTypeName(arrayTypeInfo.ElementType));
+                        GenerateArrayTypeClass(arrayTypeInfo, ilName, arrayTypeInfo.ElementType is PrimitiveTypeInfo ? null : ResolveIlTypeName(arrayTypeInfo.ElementType));
                     }
                     else if(type is RecordTypeInfo recordTypeInfo)
                     {
@@ -74,8 +73,12 @@ namespace ImperativeLang.CodeGen
                 {
                     TraverseBody(blockBody.Body, routineDec.Name);
                 }
+                foreach(var k in TypeIdentifierToIlName.Keys)
+                {
+                    TypeIdentifierToIlName[k].id = 0;
+                }
             }
-
+            
         }
 
         private void TraverseBody(List<Node> body, string context)
@@ -99,7 +102,7 @@ namespace ImperativeLang.CodeGen
 
                     if (type is ArrayTypeInfo arrayTypeInfo)
                     {
-                        GenerateArrayTypeClass(arrayTypeInfo, ilName, ResolveIlTypeName(arrayTypeInfo.ElementType));
+                        GenerateArrayTypeClass(arrayTypeInfo, ilName, arrayTypeInfo.ElementType is PrimitiveTypeInfo ? null : ResolveIlTypeName(arrayTypeInfo.ElementType));
                     }
                     else if(type is RecordTypeInfo recordTypeInfo)
                     {
@@ -228,7 +231,7 @@ namespace ImperativeLang.CodeGen
 
 
             // GETTER
-            _writer.WriteLine($".method public hidebysig instance {ilFieldType} get_Item(int32 index) cil managed");
+            _writer.WriteLine($".method public hidebysig instance {ilFieldType}{(isStruct ? "&":"")} get_Item(int32 index) cil managed");
             _writer.WriteLine("{");
             _writer.WriteLine("  .maxstack 3");
 
@@ -248,7 +251,6 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
                 _writer.WriteLine("  ldarg.1");
                 _writer.WriteLine($"  ldelema {ilFieldType}");
-                _writer.WriteLine($"  ldobj {ilFieldType}");
                 _writer.WriteLine("  ret");
             }
 
@@ -680,12 +682,20 @@ namespace ImperativeLang.CodeGen
             }
             else if(body is BlockRoutineBodyNode blockBody)
             {
+                localsCounter = 0;
                 _writer.WriteLine(".locals init (");
                 GenerateLocals(blockBody.Body, context);
+                foreach(var k in TypeIdentifierToIlName.Keys)
+                {
+                    TypeIdentifierToIlName[k].id = 0;
+                }
                 localsCounter = 0;
                 _writer.WriteLine(")");
                 GenerateScopeBody(blockBody.Body, context, 0);
-
+                foreach(var k in TypeIdentifierToIlName.Keys)
+                {
+                    TypeIdentifierToIlName[k].id = 0;
+                }
             }
         }
 
@@ -999,7 +1009,7 @@ namespace ImperativeLang.CodeGen
                         _writer.WriteLine($"st{i_int}");
                         WriteExpression(forLoopNode.Range.Start);
                         _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldType)}::get_Item(int32)");
                         _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         
                         
@@ -1016,7 +1026,7 @@ namespace ImperativeLang.CodeGen
 
                         WriteExpression(forLoopNode.Range.Start);
                         _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldType)}::get_Item(int32)");
                         _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
 
 
@@ -1025,7 +1035,7 @@ namespace ImperativeLang.CodeGen
 
                         _writer.WriteLine($"ld{i_int}");
                         _writer.WriteLine($"ld.i4 {(!forLoopNode.Reverse ? End-1 : Start)}");
-                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "blt")}.s LOOP_BODY_{bodyCount}");
+                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")}.s LOOP_BODY_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_END_{bodyCount}:");
                         bodyCount = bodiesInside;
@@ -1063,7 +1073,7 @@ namespace ImperativeLang.CodeGen
 
                         _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         WriteExpression(forLoopNode.Reverse ? forLoopNode.Range.Start : forLoopNode.Range.End!);
-                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "blt")}.s LOOP_BODY_{bodyCount}");
+                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")}.s LOOP_BODY_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_END_{bodyCount}:");
                         bodyCount = bodiesInside;
@@ -1185,7 +1195,7 @@ namespace ImperativeLang.CodeGen
                     {
                         type = ((ArrayTypeInfo)type).ElementType;
                         WriteExpression(arrayAccess.Index);
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
                     }
                 }
             }
@@ -1313,7 +1323,7 @@ namespace ImperativeLang.CodeGen
                     {
                         type = ((ArrayTypeInfo)type).ElementType;
                         WriteExpression(arrayAccess.Index);
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
                     }
                 }
             }

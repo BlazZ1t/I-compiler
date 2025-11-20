@@ -4,7 +4,8 @@ type Point is record
 end
 
 
-type arrayInt is array [10] integer
+
+type Points is array [10] Point
 
 var x : Point
 
@@ -13,12 +14,17 @@ routine assignY(value : integer) : integer
 routine main(arg : integer) is
     type IntegerArray is array [10] integer
     var intArray : IntegerArray
-    for i in intArray loop
-        print i
-    end
 end
 
 
-routine assignY(value : integer) : integer is
-    return value
+routine assignY(value : integer) is
+    type IntegerArray is array [10] integer
+    var intArray : IntegerArray
+    intArray[20] := 5
+    print(intArray[20])
+    for i in 1 .. value loop
+        print intArray[i]
+        intArray[i] := i
+        print intArray[i]
+    end
 end
