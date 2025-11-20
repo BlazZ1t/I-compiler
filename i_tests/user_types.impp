@@ -58,14 +58,14 @@ end
 
 type FamilyArray is array [10] Family
 
-routine nestedRecord() is
+routine nestedRecord(age : integer) is
     var families : FamilyArray
 
-    families[1].father.age := 35
-    print families[1].father.age
-    for i in 1 .. 5 loop
-        families[1].father.age := families[1].father.age + 1 
+    families[0].father.age := 35
+    print families[0].father.age
+    for i in 1 .. age loop
+        families[0].father.age := families[0].father.age + 1 
     end
-    print families[1].father.age
+    print families[0].father.age
 
 end

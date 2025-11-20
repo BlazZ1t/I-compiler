@@ -3,26 +3,24 @@ type Point is record
     var y : integer
 end
 
-
-
 type Points is array [10] Point
 
 var x : Point
+var y : integer
+var z : Points
 
-// routine assignY(value : integer) : integer
-
-routine mult(x : integer, y : integer) : integer is
-    return x*y
-end
+routine mult(x : integer, y : integer) : integer
 
 routine main(arg : integer) is
     type IntegerArray is array [10] integer
     var intArray : IntegerArray
-    intArray[0] := 5
+    intArray[0] := arg
     intArray[1] := 3
     intArray[2] := mult(intArray[0], intArray[1])
     print intArray[2]
 end
+
+routine mult(x : integer, y : integer) : integer => x * y
 
 
 

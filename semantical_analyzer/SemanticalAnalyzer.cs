@@ -369,10 +369,33 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     {
                         throw new AnalyzerException($"Routine '{routineDeclarationNode.Name}' already exists in the scope", routineDeclarationNode.Line, routineDeclarationNode.Column);
                     }
+                    if (routineSymbol.ReturnType != null && routineDeclarationNode.ReturnType != null)
+                    {
+                        if (!routineSymbol.ReturnType.Equals(ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType)))
+                        {
+                            throw new AnalyzerException("Type mismatch in routine definition", routineDeclarationNode.Line, routineDeclarationNode.Column);
+                        }
+                    }
+
+                    var parameters = ConvertParameters(routineDeclarationNode.Parameters);
+
+                    if (parameters.Count() != routineSymbol.Parameters.Count())
+                    {
+                        throw new AnalyzerException("Signature mismatch in routine definition", routineDeclarationNode.Line, routineDeclarationNode.Column);
+                    }
+
+                    for (int i = 0; i < parameters.Count(); i++)
+                    {
+                        if (parameters[i].Name != routineSymbol.Parameters[i].Name || !parameters[i].Type.Equals(routineSymbol.Parameters[i].Type))
+                        {
+                            throw new AnalyzerException("Signature mismatch in routine definition", routineDeclarationNode.Line, routineDeclarationNode.Column);
+                        }
+                    }
+                    
                     var newSymbol = new RoutineSymbol(routineDeclarationNode.Name,
                         routineDeclarationNode.ReturnType == null
                         ? null
-                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
+                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), parameters, routineDeclarationNode.Body == null);
                     Scope.Peek()[routineDeclarationNode.Name] = newSymbol;
                     routineDeclarationNode.RoutineSymbol = newSymbol;
                     checkForwardDeclarations--;
