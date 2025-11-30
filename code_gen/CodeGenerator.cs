@@ -928,13 +928,17 @@ namespace ImperativeLang.CodeGen
                         if(((PrimitiveTypeInfo)expression.ResolvedType!).Type is PrimitiveType.Integer
                             || (((PrimitiveTypeInfo)expression.ResolvedType).Type is PrimitiveType.Boolean))
                         {
-                            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(int32)");
+                            _writer.WriteLine("call void [mscorlib]System.Console::Write(int32)");
                         }
                         else if(((PrimitiveTypeInfo)expression.ResolvedType).Type is PrimitiveType.Real)
                         {
-                            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(float64)");
+                            _writer.WriteLine("call void [mscorlib]System.Console::Write(float64)");
                         }
+                        _writer.WriteLine("ldstr \" \"");
+                        _writer.WriteLine("call void [mscorlib]System.Console::Write(string)");
                     }
+                    _writer.WriteLine("ldstr \"\\n\"");
+                    _writer.WriteLine("call void [mscorlib]System.Console::Write(string)");
                 } 
                 else if (node is AssignmentNode assignmentNode)
                 {
