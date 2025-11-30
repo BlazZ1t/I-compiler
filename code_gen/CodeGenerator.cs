@@ -1277,7 +1277,7 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (literal.Value is double f)
                 {
-                    _writer.WriteLine($"ldc.r4 {f}");
+                    _writer.WriteLine($"ldc.r4 {f.ToString().Replace(',', '.')}");
                 }
                 else if (literal.Value is bool b)
                 {

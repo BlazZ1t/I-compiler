@@ -920,7 +920,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 if (TryEvaluateExpression(valueExpression, out object result) && result is int i)
                 {
-                    if (i != 0 || i != 1) throw new AnalyzerException("Can not assign integers other than '1' and '0' to boolean variables", valueExpression.Line, valueExpression.Column);
+                    if (i != 0 && i != 1) throw new AnalyzerException("Can not assign integers other than '1' and '0' to boolean variables", valueExpression.Line, valueExpression.Column);
                 }
                 return;
             }

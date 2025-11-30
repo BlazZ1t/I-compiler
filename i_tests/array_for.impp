@@ -10,14 +10,14 @@ routine forLoop() is
 
     for i in 1 .. 10 loop
         var Point : Point2D
-
         Point.x := i
         Point.y := 20 - i
 
         myArray[i] := Point
     end
 
-    for i in myArray reverse loop
+    for i in myArray loop
         print i.x
+        print i.y
     end
 end
