@@ -1,0 +1,13 @@
+
+routine forLoop() is
+    type integerArray is array [10] integer
+    var intArray : integerArray
+
+    for i in 1 .. 10 loop
+        intArray[i] := 30 - i * 2
+    end
+
+    for i in intArray loop
+        print i
+    end
+end

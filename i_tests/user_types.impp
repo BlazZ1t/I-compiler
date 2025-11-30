@@ -1,50 +1,3 @@
-// type Point is record
-//     var x : integer
-//     var y : integer
-// end
-
-// var p : Point
-
-
-// type PointArray is array [10] Point
-
-
-// type IntArray is array [20] int
-
-// var points : PointArray
-
-// routine test() : integer
-
-// routine test() : integer is
-//     return 5
-// end
-
-// routine pointRecord(xPosition : integer, yPosition : integer, points : PointArray) : integer is
-//     p.x := xPosition
-//     p.y := yPosition
-//     return p.x
-// end
-
-// routine integerArray() : integer is
-//     type IntegerArray is array [10] integer
-//     var intArray : IntegerArray
-//     var sum : integer is 0
-
-//     for i in 10 .. 1 reverse loop
-//         intArray[11 - i] := i
-//     end
-
-//     for i in intArray loop
-//         i = 10
-//     end
-
-//     for i in 1 .. 5 loop
-//         sum := sum + intArray[i]
-//     end
-
-//     return sum
-// end
-
 type Person is record
     var age : integer
     var balance : integer
@@ -56,16 +9,43 @@ type Family is record
         var son : Person
 end
 
-type FamilyArray is array [10] Family
+type FamilyArray is array [10] Family 
+
+routine PersonConstructor(age : integer, balance : integer) : Person is
+    var person : Person
+    person.age := age
+    person.balance := balance
+    return person
+end
+
+routine FamilyConstructor(father : Person, mother : Person, son : Person) : Family is
+    var family : Family
+    family.father := father
+    family.mother := mother
+    family.son := son
+    return family
+end
+
 
 routine nestedRecord(age : integer) is
+    var father : Person is PersonConstructor(40, 1000000)
+    var mother : Person is PersonConstructor(39, 1000)
+    var son : Person is PersonConstructor(16, 100)
+
     var families : FamilyArray
 
-    families[0].father.age := 35
-    print families[0].father.age
-    for i in 1 .. age loop
-        families[0].father.age := families[0].father.age + 1 
-    end
-    print families[0].father.age
+    for i in 1 .. 10 loop
 
+        families[i] := FamilyConstructor(PersonConstructor(40, 1000000), PersonConstructor(39, 1000), PersonConstructor(16, 100))
+    end
+
+    for i in 1 .. 10 loop
+        families[i].father.age := families[i].father.age + i
+    end
+
+    for i in 1 .. 10 loop
+        print families[i].father.age
+    end
+
+    print families[11].father.age
 end

@@ -156,18 +156,18 @@ namespace ImperativeLang.CodeGen
             }
             else if (typeInfo is ArrayTypeInfo a)
             {
-                ilTypeName = "valuetype " + TypeIdentifierToIlName[a.Name].names.Peek();
+                ilTypeName = "class " + TypeIdentifierToIlName[a.Name].names.Peek();
             }
             else if (typeInfo is RecordTypeInfo r)
             {
-                ilTypeName = "valuetype " + TypeIdentifierToIlName[r.Name].names.Peek();
+                ilTypeName = "class " + TypeIdentifierToIlName[r.Name].names.Peek();
             }
             return ilTypeName;
         }
 
         private void GenerateArrayTypeClass(ArrayTypeInfo type, string className, string? objectName = null)
         {
-            _writer.WriteLine($".class public auto ansi sealed {className} extends [mscorlib]System.ValueType");
+            _writer.WriteLine($".class public auto ansi sealed {className} extends [mscorlib]System.Object");
             _writer.WriteLine("{");
 
             string ilFieldType = "";
@@ -179,7 +179,7 @@ namespace ImperativeLang.CodeGen
             // Determine IL type and load/store behavior
             if (isStruct)
             {
-                // Struct (valuetype) element
+                // Struct (class) element
                 ilFieldType = $"{objectName!}";
                 ilNewArrType = $"{objectName}";
                 // For structs: load/store done via ldelema + ldobj/stobj
@@ -221,7 +221,7 @@ namespace ImperativeLang.CodeGen
             _writer.WriteLine("{");
             _writer.WriteLine("  .maxstack 3");
             _writer.WriteLine("  ldarg.0");
-            _writer.WriteLine("  call instance void [mscorlib]System.ValueType::.ctor()");
+            _writer.WriteLine("  call instance void [mscorlib]System.Object::.ctor()");
             _writer.WriteLine("  ldarg.0");
             _writer.WriteLine($"  ldc.i4.s {type.Size}");
             _writer.WriteLine($"  newarr {ilNewArrType}");
@@ -231,7 +231,7 @@ namespace ImperativeLang.CodeGen
 
 
             // GETTER
-            _writer.WriteLine($".method public hidebysig instance {ilFieldType}{(isStruct ? "&":"")} get_Item(int32 index) cil managed");
+            _writer.WriteLine($".method public hidebysig instance {ilFieldType} get_Item(int32 index) cil managed");
             _writer.WriteLine("{");
             _writer.WriteLine("  .maxstack 3");
 
@@ -241,7 +241,10 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("  ldarg.0");
                 _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
                 _writer.WriteLine("  ldarg.1");
+                _writer.WriteLine("  ldc.i4.1");
+                _writer.WriteLine("  sub");
                 _writer.WriteLine($"  {elemLoadOpcode}");
+                
                 _writer.WriteLine("  ret");
             }
             else
@@ -250,7 +253,9 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("  ldarg.0");
                 _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
                 _writer.WriteLine("  ldarg.1");
-                _writer.WriteLine($"  ldelema {ilFieldType}");
+                _writer.WriteLine("  ldc.i4.1");
+                _writer.WriteLine("  sub");
+                _writer.WriteLine($"  ldelem.ref");
                 _writer.WriteLine("  ret");
             }
 
@@ -267,6 +272,8 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("  ldarg.0");
                 _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
                 _writer.WriteLine("  ldarg.1");
+                _writer.WriteLine("  ldc.i4.1");
+                _writer.WriteLine("  sub");
                 _writer.WriteLine("  ldarg.2");
                 _writer.WriteLine($"  {elemStoreOpcode}");
                 _writer.WriteLine("  ret");
@@ -276,9 +283,10 @@ namespace ImperativeLang.CodeGen
                 _writer.WriteLine("  ldarg.0");
                 _writer.WriteLine($"  ldfld {ilFieldType}[] {className}::data");
                 _writer.WriteLine("  ldarg.1");
-                _writer.WriteLine($"  ldelema {ilFieldType}");
+                _writer.WriteLine("  ldc.i4.1");
+                _writer.WriteLine("  sub");
                 _writer.WriteLine("  ldarg.2");
-                _writer.WriteLine($"  stobj {ilFieldType}");
+                _writer.WriteLine($"  stelem.ref");
                 _writer.WriteLine("  ret");
             }
 
@@ -289,7 +297,7 @@ namespace ImperativeLang.CodeGen
 
         private void GenerateRecordTypeClass(RecordTypeInfo type, string className, Dictionary<string, string> objectNames)
         {
-            _writer.WriteLine($".class public auto sealed {className} extends [mscorlib]System.ValueType");
+            _writer.WriteLine($".class public auto sealed {className} extends [mscorlib]System.Object");
             _writer.WriteLine("{");
 
             Dictionary<string, string> ilFieldTypes = new();
@@ -304,26 +312,12 @@ namespace ImperativeLang.CodeGen
             _writer.Write(".method public hidebysig specialname rtspecialname instance void .ctor() cil managed");
 
             _writer.WriteLine("{");
-            _writer.WriteLine(".locals init (");
-            int i = 0;
-            foreach (var (fieldName, ilFieldType) in ilFieldTypes)
-            {
-                if (ilFieldType != "int32" && ilFieldType != "float32")
-                {
-                    if (i != 0)
-                    {
-                        _writer.Write(",");
-                    }
-                    _writer.WriteLine($"[{i}] {ilFieldType} tempPoint_{i}");
-                    i++;
-                }
-            }
-            _writer.WriteLine(")");
+            
             _writer.WriteLine(".maxstack 8");
 
             _writer.WriteLine("ldarg.0");
-            _writer.WriteLine("call instance void [mscorlib]System.ValueType::.ctor()");
-            i = 0;
+            _writer.WriteLine("call instance void [mscorlib]System.Object::.ctor()");
+
             foreach (var (fieldName, ilFieldType) in ilFieldTypes)
             {
                 _writer.WriteLine("ldarg.0");
@@ -340,9 +334,7 @@ namespace ImperativeLang.CodeGen
                 }
                 else
                 {
-                    _writer.WriteLine($"ldloca.s {i}");
-                    i++;
-                    _writer.WriteLine($"call instance void {ilFieldType}::.ctor()");
+                    _writer.WriteLine($"newobj instance void {ilFieldType}::.ctor()");
                     _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
                 }
             }
@@ -411,17 +403,17 @@ namespace ImperativeLang.CodeGen
                 else if(type is ArrayTypeInfo arrayType)
                 {   
                     typeName = TypeIdentifierToIlName[arrayType.Name].names.Peek();
-                    _writer.WriteLine($".field public static valuetype {TypeIdentifierToIlName[arrayType.Name].names.Peek()} {variable.Name}");
+                    _writer.WriteLine($".field public static class {TypeIdentifierToIlName[arrayType.Name].names.Peek()} {variable.Name}");
                 }
                 else if(type is RecordTypeInfo recordType)
                 {   
                     typeName = TypeIdentifierToIlName[recordType.Name].names.Peek();
-                    _writer.WriteLine($".field public static valuetype {TypeIdentifierToIlName[recordType.Name].names.Peek()} {variable.Name}");
+                    _writer.WriteLine($".field public static class {TypeIdentifierToIlName[recordType.Name].names.Peek()} {variable.Name}");
                 }
                 else throw new Exception("Hehe ;3");
 
                 VariableIdentifierToIlName[variable.Name] = new IlInfo();
-                VariableIdentifierToIlName[variable.Name].names.Push(variable.VariableSymbol.Type is PrimitiveTypeInfo ? $"sfld " : $"sflda valuetype " + $"{typeName} Program::{variable.Name}");
+                VariableIdentifierToIlName[variable.Name].names.Push(variable.VariableSymbol.Type is PrimitiveTypeInfo ? $"sfld " : $"sflda class " + $"{typeName} Program::{variable.Name}");
                 VariableIdentifierToIlName[variable.Name].id = 0;
             }
         }
@@ -605,11 +597,11 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (routine.RoutineSymbol!.ReturnType is ArrayTypeInfo a)
                 {
-                    returnTypeString = TypeIdentifierToIlName[a.Name].names.Peek();
+                    returnTypeString = "class " + TypeIdentifierToIlName[a.Name].names.Peek();
                 }
                 else if (routine.RoutineSymbol!.ReturnType is RecordTypeInfo r)
                 {
-                    returnTypeString = TypeIdentifierToIlName[r.Name].names.Peek();
+                    returnTypeString = "class " + TypeIdentifierToIlName[r.Name].names.Peek();
                 } 
                 else
                 {
@@ -622,7 +614,7 @@ namespace ImperativeLang.CodeGen
                     {
                         VariableIdentifierToIlName[arg.Name] = new IlInfo();
                     }
-                    VariableIdentifierToIlName[arg.Name].names.Push((arg.VariableSymbol!.Type is PrimitiveTypeInfo ? "arg" : "arga") + $".s {argCount}");
+                    VariableIdentifierToIlName[arg.Name].names.Push($"arg.s {argCount}");
                     argCount++;
                 }
 
@@ -657,11 +649,11 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (argument.VariableSymbol!.Type is ArrayTypeInfo a)
                 {
-                    result += $"valuetype {TypeIdentifierToIlName[a.Name].names.Peek()}";
+                    result += $"class {TypeIdentifierToIlName[a.Name].names.Peek()}";
                 } 
                 else if (argument.VariableSymbol!.Type is RecordTypeInfo r)
                 {
-                    result += $"valuetype {TypeIdentifierToIlName[r.Name].names.Peek()}";    
+                    result += $"class {TypeIdentifierToIlName[r.Name].names.Peek()}";    
                 }
 
                 if (i != arguments.Count() - 1)
@@ -732,12 +724,12 @@ namespace ImperativeLang.CodeGen
                     }
                     if (type is ArrayTypeInfo arrayTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc {localsCounter}");
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(arrayTypeInfo)} {ilName}");
                     }
                     else if(type is RecordTypeInfo recordTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc {localsCounter}");
                         _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(recordTypeInfo)} {ilName}");
                     }
                     localsCounter++;
@@ -797,12 +789,12 @@ namespace ImperativeLang.CodeGen
                         }
                         if (type is ArrayTypeInfo arrayTypeInfo)
                         {
-                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loca {localsCounter}");
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loc {localsCounter}");
                             _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(arrayTypeInfo)} {ilName}");
                         }
                         else if(type is RecordTypeInfo recordTypeInfo)
                         {
-                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loca {localsCounter}");
+                            VariableIdentifierToIlName[forNode.Iterator].names.Push($"loc {localsCounter}");
                             _writer.WriteLine($"[{localsCounter}] {ResolveIlTypeName(recordTypeInfo)} {ilName}");
                         }
                         localsCounter++;
@@ -887,19 +879,19 @@ namespace ImperativeLang.CodeGen
 
                     if(type is PrimitiveTypeInfo primitiveTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc.{localsCounter}");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc {localsCounter}");
                     }
                     else if (type is ArrayTypeInfo arrayTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
-                        _writer.WriteLine($"ld{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
-                        _writer.WriteLine($"call instance void {ResolveIlTypeName(arrayTypeInfo)}::.ctor()");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc {localsCounter}");
+                        _writer.WriteLine($"newobj instance void {ResolveIlTypeName(arrayTypeInfo)}::.ctor()");
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
                     }
                     else if(type is RecordTypeInfo recordTypeInfo)
                     {
-                        VariableIdentifierToIlName[varDec.Name].names.Push($"loca {localsCounter}");
-                        _writer.WriteLine($"ld{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
-                        _writer.WriteLine($"call instance void {ResolveIlTypeName(recordTypeInfo)}::.ctor()");
+                        VariableIdentifierToIlName[varDec.Name].names.Push($"loc {localsCounter}");
+                        _writer.WriteLine($"newobj instance void {ResolveIlTypeName(recordTypeInfo)}::.ctor()");
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
                     }
                     if(varDec.Initializer != null)
                     {
@@ -970,7 +962,7 @@ namespace ImperativeLang.CodeGen
 
                         if(type is PrimitiveTypeInfo primitiveTypeInfo)
                         {
-                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc.{localsCounter}");
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc {localsCounter}");
                         }
                         localsCounter++;
 
@@ -989,19 +981,19 @@ namespace ImperativeLang.CodeGen
 
                         if(type is PrimitiveTypeInfo primitiveTypeInfo1)
                         {
-                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc.{localsCounter}");
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc {localsCounter}");
                         }
                         else if (type is ArrayTypeInfo arrayTypeInfo)
                         {
-                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loca {localsCounter}");
-                            _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
-                            _writer.WriteLine($"call instance void {ResolveIlTypeName(arrayTypeInfo)}::.ctor()");
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc {localsCounter}");
+                            _writer.WriteLine($"newobj instance void {ResolveIlTypeName(arrayTypeInfo)}::.ctor()");
+                            _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         }
                         else if(type is RecordTypeInfo recordTypeInfo)
                         {
-                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loca {localsCounter}");
-                            _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
-                            _writer.WriteLine($"call instance void {ResolveIlTypeName(recordTypeInfo)}::.ctor()");
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc {localsCounter}");
+                            _writer.WriteLine($"newobj instance void {ResolveIlTypeName(recordTypeInfo)}::.ctor()");
+                            _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         }
                         localsCounter++;
 
@@ -1010,11 +1002,11 @@ namespace ImperativeLang.CodeGen
                         _writer.WriteLine($"st{i_int}");
                         WriteExpression(forLoopNode.Range.Start);
                         _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
                         _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         
                         
-                        _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
+                        _writer.WriteLine($"br CHECK_LOOP_CONDITION_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
                         int bodiesInside = GenerateScopeBody(forLoopNode.Body, context, bodyCount);
@@ -1027,7 +1019,7 @@ namespace ImperativeLang.CodeGen
 
                         WriteExpression(forLoopNode.Range.Start);
                         _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
                         _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
 
 
@@ -1036,7 +1028,7 @@ namespace ImperativeLang.CodeGen
 
                         _writer.WriteLine($"ld{i_int}");
                         _writer.WriteLine($"ld.i4 {(!forLoopNode.Reverse ? End-1 : Start)}");
-                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")}.s LOOP_BODY_{bodyCount}");
+                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")} LOOP_BODY_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_END_{bodyCount}:");
                         bodyCount = bodiesInside;
@@ -1055,12 +1047,12 @@ namespace ImperativeLang.CodeGen
 
                         if(type is PrimitiveTypeInfo primitiveTypeInfo)
                         {
-                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc.{localsCounter}");
+                            VariableIdentifierToIlName[forLoopNode.Iterator].names.Push($"loc {localsCounter}");
                         }
                         localsCounter++;
                         WriteExpression(!forLoopNode.Reverse ? forLoopNode.Range.Start : forLoopNode.Range.End!);
                         _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
-                        _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
+                        _writer.WriteLine($"br CHECK_LOOP_CONDITION_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
                         int bodiesInside = GenerateScopeBody(forLoopNode.Body, context, bodyCount);
@@ -1074,7 +1066,7 @@ namespace ImperativeLang.CodeGen
 
                         _writer.WriteLine($"ld{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
                         WriteExpression(forLoopNode.Reverse ? forLoopNode.Range.Start : forLoopNode.Range.End!);
-                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")}.s LOOP_BODY_{bodyCount}");
+                        _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")} LOOP_BODY_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_END_{bodyCount}:");
                         bodyCount = bodiesInside;
@@ -1084,7 +1076,7 @@ namespace ImperativeLang.CodeGen
                 {
                     bodyCount++;
                     WriteExpression(ifStatementNode.Condition);
-                    _writer.WriteLine($"brfalse.s {(ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count() > 0 ? $"ELSE_{bodyCount}" : $"IF_END_{bodyCount}")}");
+                    _writer.WriteLine($"brfalse {(ifStatementNode.ElseBody != null && ifStatementNode.ElseBody.Count() > 0 ? $"ELSE_{bodyCount}" : $"IF_END_{bodyCount}")}");
                     var bodiesInside = GenerateScopeBody(ifStatementNode.ThenBody, context, bodyCount) - bodyCount;
                     _writer.WriteLine($"br IF_END_{bodyCount}");
 
@@ -1118,14 +1110,14 @@ namespace ImperativeLang.CodeGen
                 else if (node is WhileLoopNode whileLoopNode)
                 {
                     bodyCount++;
-                    _writer.WriteLine($"br.s CHECK_LOOP_CONDITION_{bodyCount}");
+                    _writer.WriteLine($"br CHECK_LOOP_CONDITION_{bodyCount}");
 
                     _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
                     int bodiesInside = GenerateScopeBody(whileLoopNode.Body, context, bodyCount);
                     _writer.WriteLine("");
                     _writer.WriteLine($"CHECK_LOOP_CONDITION_{bodyCount}:");
                     WriteExpression(whileLoopNode.Condition);
-                    _writer.WriteLine($"brtrue.s LOOP_BODY_{bodyCount}");
+                    _writer.WriteLine($"brtrue LOOP_BODY_{bodyCount}");
                     _writer.WriteLine("");
                     _writer.WriteLine($"LOOP_END_{bodyCount}:");
                     bodyCount = bodiesInside;
@@ -1179,7 +1171,7 @@ namespace ImperativeLang.CodeGen
                     }
                     else
                     {
-                        _writer.WriteLine($"ldflda {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
+                        _writer.WriteLine($"ldfld {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
                     }
                     
                 }
@@ -1196,7 +1188,7 @@ namespace ImperativeLang.CodeGen
                     {
                         type = ((ArrayTypeInfo)type).ElementType;
                         WriteExpression(arrayAccess.Index);
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
                     }
                 }
             }
@@ -1314,11 +1306,11 @@ namespace ImperativeLang.CodeGen
                         }
                         else if(type is ArrayTypeInfo arrayType)
                         {
-                            _writer.WriteLine($"ldflda {ResolveIlTypeName(arrayType)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
+                            _writer.WriteLine($"ldfld {ResolveIlTypeName(arrayType)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
                         }
                         else if(type is RecordTypeInfo recordType)
                         {
-                            _writer.WriteLine($"ldflda {ResolveIlTypeName(recordType)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
+                            _writer.WriteLine($"ldfld {ResolveIlTypeName(recordType)} {ResolveIlTypeName(oldtype)}::{fieldAccess.Name}");
                         }
                     }
                     else if(accessPart is ArrayAccess arrayAccess)
@@ -1326,7 +1318,7 @@ namespace ImperativeLang.CodeGen
                         // Console.WriteLine($"{modifiablePrimary.BaseName}:{type is PrimitiveTypeInfo}, {type is ArrayTypeInfo}, {type is RecordTypeInfo}");
                         type = ((ArrayTypeInfo)type).ElementType;
                         WriteExpression(arrayAccess.Index);
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)}{(type is PrimitiveTypeInfo ? "" : "&")} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldtype)}::get_Item(int32)");
                     }
                 }
             }
