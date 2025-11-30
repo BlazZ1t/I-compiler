@@ -6,6 +6,7 @@
     <RootNamespace>I_compiler</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>ICompiler</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
