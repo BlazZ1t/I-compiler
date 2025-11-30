@@ -1,0 +1,23 @@
+
+routine forLoop() is
+    type Point2D is record
+        var x : integer
+        var y : integer
+    end
+
+    type PointArray is array [10] Point2D
+    var myArray : PointArray
+
+    for i in 1 .. 10 loop
+        var Point : Point2D
+        Point.x := i
+        Point.y := 20 - i
+
+        myArray[i] := Point
+    end
+
+    for i in myArray loop
+        print i.x
+        print i.y
+    end
+end

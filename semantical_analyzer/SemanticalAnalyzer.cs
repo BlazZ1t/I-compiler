@@ -7,6 +7,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
         private ProgramNode AST;
         private Stack<Dictionary<string, Symbol>> Scope = new Stack<Dictionary<string, Symbol>>();
 
+        private int checkForwardDeclarations = 0;
+
 
         public SemanticalAnalyzer(ProgramNode ast)
         {
@@ -32,6 +34,11 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     AddRoutineDeclaration(routineDeclaration);
                     TraverseRoutineBody(routineDeclaration);
                 }
+            }
+
+            if (checkForwardDeclarations != 0)
+            {
+                throw new AnalyzerException("Not all forward-declared routines are defined");
             }
 
             return AST;
@@ -125,13 +132,16 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             TypeInfo rangeArray = ResolveExpressionType(forLoopNode.Range.Start);
                             forLoopNode.Range.Start = TryFoldExpression(forLoopNode.Range.Start);
                             forLoopNode.Range.Start.ResolvedType = rangeArray;
-                            if (rangeArray is not ArrayTypeInfo)
+                            if (rangeArray is ArrayTypeInfo arr)
+                            {
+                                iteratorType = arr.ElementType;
+                            }
+                            else
                             {
                                 throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
                             }
                             // array traversal may be empty depending on runtime size; conservatively mark as not guaranteed
                             canExecute = false;
-                            iteratorType = rangeArray;
                         }
                         else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
                         {
@@ -155,7 +165,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 if (TryEvaluateExpression(forLoopNode.Range.Start, out object rangeStartNum) && TryEvaluateExpression(forLoopNode.Range.End, out object rangeEndNum))
                                 {
                                     forLoopNode.Range.Start = new LiteralNode((int)rangeStartNum, PrimitiveType.Integer, forLoopNode.Range.Start.Line, forLoopNode.Range.Start.Column);
-                                    forLoopNode.Range.Start = new LiteralNode((int)rangeEndNum, PrimitiveType.Integer, forLoopNode.Range.End.Line, forLoopNode.Range.End.Column);
+                                    forLoopNode.Range.End = new LiteralNode((int)rangeEndNum, PrimitiveType.Integer, forLoopNode.Range.End.Line, forLoopNode.Range.End.Column);
                                     // If range is known at compile-time, warn when it cannot iterate
                                     if (!forLoopNode.Reverse && (int)rangeEndNum < (int)rangeStartNum)
                                     {
@@ -270,6 +280,8 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                                 throw new AnalyzerException($"Expected {routineSymbol.Parameters.Count} arguments. Got {routineCallStatementNode.Call.Arguments.Count}.", routineCallStatementNode.Line, routineCallStatementNode.Column);
                             }
 
+                            routineCallStatementNode.Call.RoutineSymbol = routineSymbol;
+
                             for (int j = 0; j < routineSymbol.Parameters.Count; j++)
                             {
                                 CheckAssignmentPossibility(routineSymbol.Parameters[j].Type, ResolveExpressionType(routineCallStatementNode.Call.Arguments[j]), routineCallStatementNode.Call.Arguments[j]);
@@ -334,6 +346,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                         {
                             var expression = printStatementNode.Expressions[j];
                             TypeInfo resolvedType = ResolveExpressionType(expression);
+                            if (resolvedType is ArrayTypeInfo || resolvedType is RecordTypeInfo) throw new AnalyzerException("Only primitive objects can be printed", expression.Line, expression.Column);
                             printStatementNode.Expressions[j] = TryFoldExpression(printStatementNode.Expressions[j]);
                             printStatementNode.Expressions[j].ResolvedType = resolvedType;
 
@@ -350,6 +363,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
     // declarations by replacing placeholders and keeps signature information.
     private void AddRoutineDeclaration(RoutineDeclarationNode routineDeclarationNode)
         {
+            if (routineDeclarationNode.Name == "global") throw new AnalyzerException("Name 'global' is reserved and can not be used as routine name", routineDeclarationNode.Line, routineDeclarationNode.Column);
             if (Scope.Peek().ContainsKey(routineDeclarationNode.Name))
             {
                 if (Scope.Peek()[routineDeclarationNode.Name] is RoutineSymbol routineSymbol)
@@ -358,17 +372,43 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                     {
                         throw new AnalyzerException($"Routine '{routineDeclarationNode.Name}' already exists in the scope", routineDeclarationNode.Line, routineDeclarationNode.Column);
                     }
+                    if (routineSymbol.ReturnType != null && routineDeclarationNode.ReturnType != null)
+                    {
+                        if (!routineSymbol.ReturnType.Equals(ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType)))
+                        {
+                            throw new AnalyzerException("Type mismatch in routine definition", routineDeclarationNode.Line, routineDeclarationNode.Column);
+                        }
+                    }
 
-                    Scope.Peek()[routineDeclarationNode.Name] = new RoutineSymbol(routineDeclarationNode.Name,
+                    var parameters = ConvertParameters(routineDeclarationNode.Parameters);
+
+                    if (parameters.Count() != routineSymbol.Parameters.Count())
+                    {
+                        throw new AnalyzerException("Signature mismatch in routine definition", routineDeclarationNode.Line, routineDeclarationNode.Column);
+                    }
+
+                    for (int i = 0; i < parameters.Count(); i++)
+                    {
+                        if (parameters[i].Name != routineSymbol.Parameters[i].Name || !parameters[i].Type.Equals(routineSymbol.Parameters[i].Type))
+                        {
+                            throw new AnalyzerException("Signature mismatch in routine definition", routineDeclarationNode.Line, routineDeclarationNode.Column);
+                        }
+                    }
+                    
+                    var newSymbol = new RoutineSymbol(routineDeclarationNode.Name,
                         routineDeclarationNode.ReturnType == null
                         ? null
-                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), ConvertParameters(routineDeclarationNode.Parameters), routineDeclarationNode.Body == null);
+                        : ResolveTypeFromTypeNodeReference(routineDeclarationNode.ReturnType), parameters, routineDeclarationNode.Body == null);
+                    Scope.Peek()[routineDeclarationNode.Name] = newSymbol;
+                    routineDeclarationNode.RoutineSymbol = newSymbol;
+                    checkForwardDeclarations--;
                     return;
                 } else
                 {
                     throw new AnalyzerException("Something went terribely wrong with routine declarations", routineDeclarationNode.Line, routineDeclarationNode.Column);
                 }
             }
+            if (routineDeclarationNode.Body == null) checkForwardDeclarations++;
             RoutineSymbol result = new RoutineSymbol(routineDeclarationNode.Name,
                 routineDeclarationNode.ReturnType == null
                 ? null
@@ -522,11 +562,20 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 Symbol? routineSymbol = LookupSymbol(routineCallNode.Name);
 
-                if (routineSymbol != null && routineSymbol is RoutineSymbol routine)
+                if (routineSymbol is RoutineSymbol routine)
                 {
                     if (routine.ReturnType == null)
                     {
                         throw new AnalyzerException("Routines without return type cannot be used in expressions", routineCallNode.Line, routineCallNode.Column);
+                    }
+                    for (int i = 0; i < routine.Parameters.Count(); i++)
+                    {
+                        CheckAssignmentPossibility(routine.Parameters[i].Type, ResolveExpressionType(routineCallNode.Arguments[i]), routineCallNode.Arguments[i]);
+                        if ((routineCallNode.Arguments[i] is ModifiablePrimaryNode modifiablePrimaryArgument) && (modifiablePrimaryArgument.VariableSymbol == null))
+                        {
+                            // Console.WriteLine(modifiablePrimaryArgument.VariableSymbol!.Name);
+                            modifiablePrimaryArgument.VariableSymbol = routine.Parameters[i];
+                        }
                     }
                     routineCallNode.RoutineSymbol = routine;
                     return routine.ReturnType;
@@ -871,7 +920,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
             {
                 if (TryEvaluateExpression(valueExpression, out object result) && result is int i)
                 {
-                    if (i != 0 || i != 1) throw new AnalyzerException("Can not assign integers other than '1' and '0' to boolean variables", valueExpression.Line, valueExpression.Column);
+                    if (i != 0 && i != 1) throw new AnalyzerException("Can not assign integers other than '1' and '0' to boolean variables", valueExpression.Line, valueExpression.Column);
                 }
                 return;
             }

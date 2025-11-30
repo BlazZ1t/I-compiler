@@ -1,3 +1,35 @@
-routine main(a : integer) is
-    print a
+type Point is record
+    var x : integer
+    var y : integer
 end
+
+type Points is array [10] Point
+
+var x : Point
+var y : integer
+var z : Points
+
+routine mult(p : Point) : integer
+
+routine main(arg : integer) is
+    // type IntegerArray is array [10] integer
+    // var intArray : IntegerArray
+    x.x := 10
+    x.y := 7
+    print mult(x)
+end
+
+routine mult(p : Point) : integer => p.x * p.y
+
+
+
+
+// routine assignY(value : integer) is
+//     type IntegerArray is array [10] integer
+//     var intArray : IntegerArray
+//     for i in 1 .. value loop
+//         print intArray[i]
+//         intArray[i] := i
+//         print intArray[i]
+//     end
+// end

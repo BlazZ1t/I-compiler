@@ -1,47 +1,50 @@
-routine pointRecord(xPosition : integer, yPosition : integer) : integer is
-    type Point is record
-        var x : integer
-        var y : integer
-    end
-
-    var p : Point
-
-    p.x := xPosition
-    p.y := yPosition
-    return p.x
+type Person is record
+    var age : integer
+    var balance : integer
 end
 
-routine integerArray() : integer is
-    type IntegerArray is array [10] integer
-    var intArray : IntegerArray
-    var sum : integer is 0
-
-    for i in 10 .. 1 reverse loop
-        intArray[11 - i] := i
-    end
-
-    for i in 1 .. 5 loop
-        sum := sum + intArray[i]
-    end
-
-    return sum
-end
-
-routine nestedRecord() is
-    type Person is record
-        var age : integer
-        var balance : integer
-    end
-
-    type Family is record
+type Family is record
         var father : Person
         var mother : Person
         var son : Person
-    end
 end
 
-routine typeAlias() : integer is
-    type int is integer
-    var x : int is 5
-    return x
+type FamilyArray is array [10] Family 
+
+routine PersonConstructor(age : integer, balance : integer) : Person is
+    var person : Person
+    person.age := age
+    person.balance := balance
+    return person
+end
+
+routine FamilyConstructor(father : Person, mother : Person, son : Person) : Family is
+    var family : Family
+    family.father := father
+    family.mother := mother
+    family.son := son
+    return family
+end
+
+
+routine nestedRecord(age : integer) is
+    var father : Person is PersonConstructor(40, 1000000)
+    var mother : Person is PersonConstructor(39, 1000)
+    var son : Person is PersonConstructor(16, 100)
+
+    var family is FamilyConstructor(father, mother, son)
+    // var families : FamilyArray
+
+    // for i in 1 .. 10 loop
+    //     print i
+    //     families[i] := FamilyConstructor(PersonConstructor(40, 1000000), PersonConstructor(39, 1000), PersonConstructor(16, 100))
+    // end
+
+    // for i in 1 .. 10 loop
+    //     families[i].father.age := families[i].father.age + i
+    // end
+
+    // for i in 1 .. 10 loop
+    //     print families[i].father.age
+    // end
 end
