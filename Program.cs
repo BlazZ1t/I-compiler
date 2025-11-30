@@ -108,11 +108,24 @@ namespace ImperativeLang
                 codegen.GenerateMSIL(programNode);
                 
                 var process = new Process();
-                process.StartInfo.FileName = "ilasm";
-                process.StartInfo.Arguments = $"\"{outputPath}.il\" /exe /out:\"{outputPath}.exe\"";
+                string ilasm = FindIlasm();
+                bool isDll = ilasm.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.RedirectStandardOutput = true;
                 process.StartInfo.RedirectStandardError = true;
+
+                if (isDll)
+                {
+                    process.StartInfo.FileName = "dotnet";
+                    process.StartInfo.Arguments =
+                        $"\"{ilasm}\" \"{outputPath}.il\" /exe /out:\"{outputPath}.exe\"";
+                }
+                else
+                {
+                    process.StartInfo.FileName = ilasm;
+                    process.StartInfo.Arguments =
+                        $"\"{outputPath}.il\" /exe /out:\"{outputPath}.exe\"";
+                }
 
                 process.Start();
                 string output = process.StandardOutput.ReadToEnd();
@@ -160,6 +173,75 @@ namespace ImperativeLang
                 
             }
         }
+
+        public static string FindIlasm()
+        {
+            var searchRoots = new List<string>();
+
+            string? dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+            if (!string.IsNullOrWhiteSpace(dotnetRoot))
+                searchRoots.Add(dotnetRoot);
+
+            if (OperatingSystem.IsWindows())
+            {
+                searchRoots.Add(@"C:\Program Files\dotnet");
+                searchRoots.Add(@"C:\Program Files (x86)\dotnet");
+            }
+            else
+            {
+                searchRoots.Add("/usr/share/dotnet");
+                searchRoots.Add("/usr/local/share/dotnet");
+            }
+
+            if (OperatingSystem.IsWindows())
+            {
+                searchRoots.Add(@"C:\Windows\Microsoft.NET\Framework");
+                searchRoots.Add(@"C:\Windows\Microsoft.NET\Framework64");
+            }
+
+            string ilasmName = OperatingSystem.IsWindows() ? "ilasm.exe" : "ilasm";
+
+            foreach (var root in searchRoots)
+            {
+                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+                    continue;
+                string sdkPath = Path.Combine(root, "sdk");
+                if (Directory.Exists(sdkPath))
+                {
+                    var sdks = Directory.GetDirectories(sdkPath)
+                        .OrderByDescending(Path.GetFileName);
+
+                    foreach (var sdk in sdks)
+                    {
+                        string exe = Path.Combine(sdk, ilasmName);
+                        if (File.Exists(exe))
+                            return exe;
+
+                        string dll = Path.Combine(sdk, "ilasm.dll");
+                        if (File.Exists(dll))
+                            return dll;
+                    }
+                }
+                if (OperatingSystem.IsWindows() &&
+                    (root.Contains("Framework") || root.Contains("Framework64")))
+                {
+                    var frameworkVersions = Directory.GetDirectories(root)
+                        .OrderByDescending(Path.GetFileName);
+
+                    foreach (var versionDir in frameworkVersions)
+                    {
+                        string exe = Path.Combine(versionDir, ilasmName);
+                        if (File.Exists(exe))
+                            return exe;
+                    }
+                }
+            }
+
+            throw new FileNotFoundException(
+                "Could not find ilasm.exe or ilasm.dll in any known .NET paths."
+            );
+        }
+
 
         private static void PrintUsage()
         {
