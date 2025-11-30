@@ -132,13 +132,16 @@ namespace ImperativeLang.SemanticalAnalyzerNS
                             TypeInfo rangeArray = ResolveExpressionType(forLoopNode.Range.Start);
                             forLoopNode.Range.Start = TryFoldExpression(forLoopNode.Range.Start);
                             forLoopNode.Range.Start.ResolvedType = rangeArray;
-                            if (rangeArray is not ArrayTypeInfo)
+                            if (rangeArray is ArrayTypeInfo arr)
+                            {
+                                iteratorType = arr.ElementType;
+                            }
+                            else
                             {
                                 throw new AnalyzerException("Can not iterate on a non-array object", forLoopNode.Line, forLoopNode.Column);
                             }
                             // array traversal may be empty depending on runtime size; conservatively mark as not guaranteed
                             canExecute = false;
-                            iteratorType = rangeArray;
                         }
                         else if (ResolveExpressionType(forLoopNode.Range.Start) is PrimitiveTypeInfo rangeStart)
                         {

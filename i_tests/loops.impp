@@ -1,22 +1,30 @@
-routine whileLoop() is
-    var x : integer is 0
-    while x < 5 loop
-        for i in 1 .. 5 loop
-            print i
-        end
-        print x
-        x := x + 1
-    end
-end
+// routine whileLoop() is
+//     var x : integer is 0
+//     while x < 5 loop
+//         for i in 1 .. 5 loop
+//             print i
+//         end
+//         print x
+//         x := x + 1
+//     end
+// end
 
 routine forLoop() is
-    for i in 1 .. 5 loop
+    type integerArray is array [10] integer
+    var intArray : integerArray
+
+    for i in 1 .. 10 loop
+        intArray[i] := 30 - i * 2
+    end
+
+    for i in intArray loop
         print i
     end
 end
 
-routine forLoopReversed() is
-    for i in 5 .. 1 reverse loop
-        print i
-    end
-end
+
+// routine forLoopReversed() is
+//     for i in 5 .. 1 reverse loop
+//         print i
+//     end
+// end
