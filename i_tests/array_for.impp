@@ -1,13 +1,23 @@
 
 routine forLoop() is
-    type integerArray is array [10] integer
-    var intArray : integerArray
-
-    for i in 1 .. 10 loop
-        intArray[i] := 30 - i * 2
+    type Point2D is record
+        var x : integer
+        var y : integer
     end
 
-    for i in intArray loop
-        print i
+    type PointArray is array [10] Point2D
+    var myArray : PointArray
+
+    for i in 1 .. 10 loop
+        var Point : Point2D
+
+        Point.x := i
+        Point.y := 20 - i
+
+        myArray[i] := Point
+    end
+
+    for i in myArray reverse loop
+        print i.x
     end
 end

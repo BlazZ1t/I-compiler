@@ -945,8 +945,8 @@ namespace ImperativeLang.CodeGen
                     bodyCount++;
                     if (forLoopNode.IsArrayTraversal)
                     {
-                        int Start = 0;
-                        int End = ((ArrayTypeInfo)forLoopNode.Range.Start.ResolvedType!).Size;
+                        int Start = 1;
+                        int End = ((ArrayTypeInfo)forLoopNode.Range.Start.ResolvedType!).Size + 1;
                         
 
 
@@ -998,17 +998,19 @@ namespace ImperativeLang.CodeGen
                         localsCounter++;
 
 
-                        _writer.WriteLine($"ld.i4 {(!forLoopNode.Reverse ? Start : End-1)}");
-                        _writer.WriteLine($"st{i_int}");
-                        WriteExpression(forLoopNode.Range.Start);
-                        _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
-                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+                        _writer.WriteLine($"ldc.i4 {(!forLoopNode.Reverse ? Start : End-1)}");
+                        _writer.WriteLine($"st{i_int}");                        
                         
                         
                         _writer.WriteLine($"br CHECK_LOOP_CONDITION_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_BODY_{bodyCount}:");
+                        
+                        WriteExpression(forLoopNode.Range.Start);
+                        _writer.WriteLine($"ld{i_int}");
+                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
+                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
+
                         int bodiesInside = GenerateScopeBody(forLoopNode.Body, context, bodyCount);
 
 
@@ -1017,17 +1019,12 @@ namespace ImperativeLang.CodeGen
                         _writer.WriteLine("add");
                         _writer.WriteLine($"st{i_int}");
 
-                        WriteExpression(forLoopNode.Range.Start);
-                        _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"call instance {ResolveIlTypeName(type)} {ResolveIlTypeName(oldType)}::get_Item(int32)");
-                        _writer.WriteLine($"st{VariableIdentifierToIlName[forLoopNode.Iterator].names.Peek()}");
-
 
                         _writer.WriteLine();
                         _writer.WriteLine($"CHECK_LOOP_CONDITION_{bodyCount}:");
 
                         _writer.WriteLine($"ld{i_int}");
-                        _writer.WriteLine($"ld.i4 {(!forLoopNode.Reverse ? End-1 : Start)}");
+                        _writer.WriteLine($"ldc.i4 {(!forLoopNode.Reverse ? End-1 : Start)}");
                         _writer.WriteLine($"{(forLoopNode.Reverse ? "bge" : "ble")} LOOP_BODY_{bodyCount}");
                         _writer.WriteLine();
                         _writer.WriteLine($"LOOP_END_{bodyCount}:");
