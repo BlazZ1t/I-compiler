@@ -150,7 +150,7 @@ namespace ImperativeLang.CodeGen
                     {
                         PrimitiveType.Integer => "int32",
                         PrimitiveType.Boolean => "int32",
-                        PrimitiveType.Real => "float32",
+                        PrimitiveType.Real => "float64",
                         _ => throw new Exception("Unsupported primitive")
                     };
             }
@@ -197,10 +197,10 @@ namespace ImperativeLang.CodeGen
                         break;
 
                     case PrimitiveType.Real:
-                        ilFieldType = "float32";
+                        ilFieldType = "float64";
                         ilNewArrType = "[mscorlib]System.Single";
-                        elemLoadOpcode = "ldelem.r4";
-                        elemStoreOpcode = "stelem.r4";
+                        elemLoadOpcode = "ldelem.r8";
+                        elemStoreOpcode = "stelem.r8";
                         break;
 
                     default:
@@ -326,10 +326,10 @@ namespace ImperativeLang.CodeGen
                     _writer.WriteLine("ldc.i4.0");
                     _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
                 }
-                else if(ilFieldType == "float32")
+                else if(ilFieldType == "float64")
                 {
                     _writer.WriteLine("ldc.i4.0");
-                    _writer.WriteLine("conv.r4");
+                    _writer.WriteLine("conv.r8");
                     _writer.WriteLine($"stfld {ilFieldType} {className}::{fieldName}");
                 }
                 else
@@ -353,7 +353,7 @@ namespace ImperativeLang.CodeGen
                     {
                         PrimitiveType.Integer => "int32",
                         PrimitiveType.Boolean => "int32",
-                        PrimitiveType.Real => "float32",
+                        PrimitiveType.Real => "float64",
                         _ => throw new Exception("Unsupported primitive")
                     };
 
@@ -390,8 +390,8 @@ namespace ImperativeLang.CodeGen
                     switch (primitiveType.Type)
                     {
                         case PrimitiveType.Real:
-                            typeName = "float32";
-                            _writer.WriteLine($".field public static float32 {variable.Name}");
+                            typeName = "float64";
+                            _writer.WriteLine($".field public static float64 {variable.Name}");
                             break;
                         case PrimitiveType.Integer:
                         case PrimitiveType.Boolean:
@@ -469,7 +469,7 @@ namespace ImperativeLang.CodeGen
                                 argumentTypes.Add("int32");
                                 break;
                             case PrimitiveType.Real:
-                                argumentTypes.Add("float32");
+                                argumentTypes.Add("float64");
                                 break;
                         }
                     }
@@ -520,9 +520,9 @@ namespace ImperativeLang.CodeGen
                     {
                         _writer.WriteLine("call int32 [mscorlib]System.Int32::Parse(string)");
                     }
-                    else if(argType == "float32")
+                    else if(argType == "float64")
                     {
-                        _writer.WriteLine("call float32 [mscorlib]System.Single::Parse(string)");
+                        _writer.WriteLine("call float64 [mscorlib]System.Single::Parse(string)");
                     }
                     else
                     {
@@ -591,7 +591,7 @@ namespace ImperativeLang.CodeGen
                             returnTypeString = "int32";
                             break;
                         case PrimitiveType.Real:
-                            returnTypeString = "float32";
+                            returnTypeString = "float64";
                             break;
                     }
                 }
@@ -642,7 +642,7 @@ namespace ImperativeLang.CodeGen
                             typeString = "int32";
                             break;
                         case PrimitiveType.Real:
-                            typeString = "float32";
+                            typeString = "float64";
                             break;
                     }
                     result += $"{typeString}";
@@ -900,7 +900,7 @@ namespace ImperativeLang.CodeGen
                             && (varDec.VariableSymbol.Type is PrimitiveTypeInfo p2)
                             && (p1.Type != p2.Type))
                         {
-                            _writer.WriteLine($"conv.{(p2.Type is PrimitiveType.Real ? "r4" : "i4")}");
+                            _writer.WriteLine($"conv.{(p2.Type is PrimitiveType.Real ? "r8" : "i4")}");
                         }
                         _writer.WriteLine($"st{VariableIdentifierToIlName[varDec.Name].names.Peek()}");
                     }
@@ -925,14 +925,14 @@ namespace ImperativeLang.CodeGen
                     foreach(var expression in print.Expressions)
                     {
                         WriteExpression(expression);
-                        if(((PrimitiveTypeInfo)expression.ResolvedType!).Type is PrimitiveType.Integer)
+                        if(((PrimitiveTypeInfo)expression.ResolvedType!).Type is PrimitiveType.Integer
+                            || (((PrimitiveTypeInfo)expression.ResolvedType).Type is PrimitiveType.Boolean))
                         {
                             _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(int32)");
                         }
-                        else if((((PrimitiveTypeInfo)(expression.ResolvedType)).Type is PrimitiveType.Boolean) 
-                            || (((PrimitiveTypeInfo)(expression.ResolvedType)).Type is PrimitiveType.Real))
+                        else if(((PrimitiveTypeInfo)expression.ResolvedType).Type is PrimitiveType.Real)
                         {
-                            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(float32)");
+                            _writer.WriteLine("call void [mscorlib]System.Console::WriteLine(float64)");
                         }
                     }
                 } 
@@ -1146,9 +1146,22 @@ namespace ImperativeLang.CodeGen
             if(modifiablePrimary.AccessPart.Count == 0)
             {
                 WriteExpression(assignmentNode.Value);
+                if (assignmentNode.Target.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Integer} 
+                    && assignmentNode.Value.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Real})
+                {
+                    _writer.WriteLine("call float64 [mscorlib]System.Math::Round(float64)");
+                    _writer.WriteLine("conv.i4");
+                } 
+                else if (assignmentNode.Target.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Real} 
+                        && (assignmentNode.Value.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Integer} 
+                        || assignmentNode.Value.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Boolean} ))
+                {
+                    _writer.WriteLine("conv.r8");
+                }
                 _writer.WriteLine($"st{VariableIdentifierToIlName[assignmentNode.Target.BaseName].names.Peek()}");
                 return;
             }
+
 
             _writer.WriteLine($"ld{VariableIdentifierToIlName[modifiablePrimary.BaseName].names.Peek()}");
 
@@ -1196,7 +1209,7 @@ namespace ImperativeLang.CodeGen
             if(expression is BinaryExpressionNode binaryExpression)
             {
                 WriteExpression(binaryExpression.Left);
-                if (expression.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Real}) _writer.WriteLine("conv.r4");
+                if (expression.ResolvedType is PrimitiveTypeInfo {Type : PrimitiveType.Real}) _writer.WriteLine("conv.r8");
                 WriteExpression(binaryExpression.Right);
 
                 switch (binaryExpression.Operator)
@@ -1211,7 +1224,7 @@ namespace ImperativeLang.CodeGen
                         _writer.WriteLine("mul");
                         break;
                     case Operator.Divide:
-                        _writer.WriteLine("conv.r4");
+                        _writer.WriteLine("conv.r8");
                         _writer.WriteLine("div");
                         break;
                     case Operator.Modulo:
@@ -1254,11 +1267,12 @@ namespace ImperativeLang.CodeGen
             }
             else if(expression is UnaryExpressionNode unaryExpression)
             {
-                WriteExpression(unaryExpression);
+                WriteExpression(unaryExpression.Operand);
+                bool isFloat = unaryExpression.ResolvedType is PrimitiveTypeInfo {Type: PrimitiveType.Real};
                 switch (unaryExpression.Operator)
                 {
                     case UnaryOperator.Plus:
-                        _writer.WriteLine("call int32 [mscorlib]System.Math::Abs(int32)");
+                        _writer.WriteLine($"call {(isFloat ? "float64" : "int32")} [mscorlib]System.Math::Abs({(isFloat ? "float64" : "int32")})");
                         break;
                     case UnaryOperator.Not:
                         _writer.WriteLine("ldc.i4.0");
@@ -1277,7 +1291,7 @@ namespace ImperativeLang.CodeGen
                 }
                 else if (literal.Value is double f)
                 {
-                    _writer.WriteLine($"ldc.r4 {f.ToString().Replace(',', '.')}");
+                    _writer.WriteLine($"ldc.r8 {f.ToString().Replace(',', '.')}");
                 }
                 else if (literal.Value is bool b)
                 {

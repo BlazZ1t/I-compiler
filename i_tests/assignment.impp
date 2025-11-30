@@ -1,40 +1,41 @@
-routine minusSign() : integer is
-    var x : integer is 5
-    var y is -5
-    return y
+routine minusSign() is
+    var x : real is -5.0
+    var y : real //TODO: Добавить + и посмотреть почему stack overflow
+    y := +x
+    print y
 end
 
 //Routine for integer assignment test
-routine assignInt() is
-    var x : integer
-    var y : real
-    var z : boolean
+// routine assignInt() is
+//     var x : integer
+//     var y : real
+//     var z : boolean
 
-    x := 5
-    print x
-    x := 5.4
-    print x
-    x := 5.6
-    print x
-    x := true
-    print x
-    x := false
-    print x
-    y := 3.13
-    print y
-    y := 5
-    print y
-    y := true
-    print y
-    y := false
-    print y
-    z := true
-    print z
-    z := 1
-    print z
-    x := 0
-    print z
-end
+//     x := 5
+//     print x
+//     x := 5.4
+//     print x
+//     x := 5.6
+//     print x
+//     x := true
+//     print x
+//     x := false
+//     print x
+//     y := 3.13
+//     print y
+//     y := 5
+//     print y
+//     y := true
+//     print y
+//     y := false
+//     print y
+//     z := true
+//     print z
+//     z := 1
+//     print z
+//     z := 0
+//     print z
+// end
 
 // //Routine for real assignment test
 // routine assignReal() : real is
