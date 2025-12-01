@@ -1,4 +1,3 @@
-
 routine forLoop() is
     type Point2D is record
         var x : integer
@@ -17,7 +16,6 @@ routine forLoop() is
     end
 
     for i in myArray loop
-        print i.x
-        print i.y
+        print i.x, i.y
     end
 end
