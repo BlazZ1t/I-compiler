@@ -11,5 +11,4 @@ namespace ImperativeLang.SyntaxAnalyzer
             Column = column;
         }
     }
-   
 }

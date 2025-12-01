@@ -33,18 +33,17 @@ routine nestedRecord(age : integer) is
     var son : Person is PersonConstructor(16, 100)
 
     var family is FamilyConstructor(father, mother, son)
-    // var families : FamilyArray
+    var families : FamilyArray
 
-    // for i in 1 .. 10 loop
-    //     print i
-    //     families[i] := FamilyConstructor(PersonConstructor(40, 1000000), PersonConstructor(39, 1000), PersonConstructor(16, 100))
-    // end
+    for i in 1 .. 10 loop
+        families[i] := FamilyConstructor(father, mother, son)
+    end
 
-    // for i in 1 .. 10 loop
-    //     families[i].father.age := families[i].father.age + i
-    // end
+    for i in 1 .. 10 loop
+        families[i].father.age := families[i].father.age + i
+    end
 
-    // for i in 1 .. 10 loop
-    //     print families[i].father.age
-    // end
+    for i in 1 .. 10 loop
+        print families[i].father.age
+    end
 end

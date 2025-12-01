@@ -62,9 +62,9 @@ namespace ImperativeLang.SemanticalAnalyzerNS
 
     class RecordTypeInfo : TypeInfo
     {
-        public string Name { get; set; } //Just look up in symbol table for fields
+        public string Name { get; set; }
 
-        public Dictionary<string, TypeInfo> Fields { get; set; }  // MAYBE ADD THIS
+        public Dictionary<string, TypeInfo> Fields { get; set; }
         public RecordTypeInfo(string name, Dictionary<string, TypeInfo> fields)
         {
             Name = name;

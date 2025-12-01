@@ -363,7 +363,7 @@ namespace ImperativeLang.SemanticalAnalyzerNS
     // declarations by replacing placeholders and keeps signature information.
     private void AddRoutineDeclaration(RoutineDeclarationNode routineDeclarationNode)
         {
-            if (routineDeclarationNode.Name == "global") throw new AnalyzerException("Name 'global' is reserved and can not be used as routine name", routineDeclarationNode.Line, routineDeclarationNode.Column);
+            if (routineDeclarationNode.Name == "Main" || routineDeclarationNode.Name == "global") throw new AnalyzerException($"Name '{routineDeclarationNode.Name}' is reserved and can not be used as routine name", routineDeclarationNode.Line, routineDeclarationNode.Column);
             if (Scope.Peek().ContainsKey(routineDeclarationNode.Name))
             {
                 if (Scope.Peek()[routineDeclarationNode.Name] is RoutineSymbol routineSymbol)
