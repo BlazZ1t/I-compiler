@@ -9,15 +9,16 @@ namespace ImperativeLang
 {
     class Program
     {
+        static bool verbose = false;
         static void Main(string[] args)
         {
             if (args.Length == 0)
             {
-                HandleCompile("D:/VsCodeProjects/I-compiler/i_tests/assignment.impp");
+                PrintUsage();
                 return;
             }
 
-            var command = args[0].ToLower();
+            string command = args[0].ToLower();
 
             switch (command)
             {
@@ -27,10 +28,11 @@ namespace ImperativeLang
                         System.Console.WriteLine("Error: Missing file path");
                         return;
                     }
+                    if (args.Contains("-v"))
+                    {
+                        verbose = true;
+                    }
                     HandleCompile(args[1]);
-                    break;
-                case "test":
-                    RunTests();
                     break;
                 default:
                     System.Console.WriteLine($"Unkown command: {command}");
@@ -39,45 +41,7 @@ namespace ImperativeLang
             }
         }
 
-        private static void RunTests()
-        {
-            string testDir = Path.Combine(Directory.GetCurrentDirectory(), "i_tests");
-            if (!Directory.Exists(testDir))
-            {
-                Console.WriteLine($"Test directory not found: {testDir}");
-                return;
-            }
-
-            string[] files = Directory.GetFiles(testDir, "*.*", SearchOption.TopDirectoryOnly);
-
-            if (files.Length == 0)
-            {
-                Console.WriteLine("No test files found.");
-                return;
-            }
-
-            int passed = 0;
-
-            foreach (var file in files)
-            {
-                Console.WriteLine($"=== Running test: {Path.GetFileName(file)} ===");
-                HandleCompile(file, true);
-                System.Console.WriteLine();
-                System.Console.WriteLine("Passed!");
-                passed++;
-                System.Console.WriteLine();
-            }
-            if (passed == files.Length)
-            {
-                System.Console.WriteLine("All tests passed!");
-            }
-            else
-            {
-                Console.WriteLine($"{passed}/{files.Length} passed");   
-            }
-        }
-
-        private static void HandleCompile(string filePath, bool testing = false)
+        private static void HandleCompile(string filePath)
         {
             if (!filePath.EndsWith(".impp", StringComparison.OrdinalIgnoreCase))
             {
@@ -96,12 +60,43 @@ namespace ImperativeLang
                 Lexer lexer = new Lexer(File.ReadAllText(filePath));
                 List<Token> tokens = lexer.Tokenize().ToList();
                 tokens = lexer.CleanUp(tokens);
+                if (verbose)
+                {
+                    System.Console.WriteLine("Tokens:");
+                    foreach (var token in tokens)
+                    {
+                        System.Console.WriteLine(token);
+                    }
+                }
 
                 Parser parser = new Parser(tokens);
                 ProgramNode programNode = parser.getAST();
+                if (verbose)
+                {
+                    System.Console.WriteLine("AST (not fully representative):");
+                    var settings = new JsonSerializerSettings
+                    {
+                        Formatting = Formatting.Indented
+                    };
+                    settings.Converters.Add(new StringEnumConverter());
+                    string json = JsonConvert.SerializeObject(programNode, settings);
+                    System.Console.WriteLine(json);
+                }
 
                 SemanticalAnalyzer semanticalAnalyzer = new SemanticalAnalyzer(programNode);
                 semanticalAnalyzer.Analyze();
+
+                if (verbose)
+                {
+                    System.Console.WriteLine("AAST (not fully representative):");
+                    var settings = new JsonSerializerSettings
+                    {
+                        Formatting = Formatting.Indented
+                    };
+                    settings.Converters.Add(new StringEnumConverter());
+                    string json = JsonConvert.SerializeObject(programNode, settings);
+                    System.Console.WriteLine(json);
+                }
 
                 string outputPath = Path.GetFileNameWithoutExtension(filePath);
                 var codegen = new CodeGenerator(new StreamWriter($"{outputPath}.il"));
@@ -141,17 +136,6 @@ namespace ImperativeLang
                     System.Console.WriteLine("Assembly error:");
                     System.Console.WriteLine(errors);
                 }
-
-                // if (!testing)
-                // { 
-                //     var settings = new JsonSerializerSettings
-                //     {
-                //         Formatting = Formatting.Indented
-                //     };
-                //     settings.Converters.Add(new StringEnumConverter());
-                //     string json = JsonConvert.SerializeObject(programNode, settings);
-                //     System.Console.WriteLine(json);
-                // }
             }
             catch (CompilerException e)
             {
@@ -246,8 +230,8 @@ namespace ImperativeLang
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("  compile [file.impp]  Compile the given source file");
-            Console.WriteLine("  test                 Test on all files in i_test directory");
+            Console.WriteLine("  compile {file.impp} [-v] Compile the given source file");
+            Console.WriteLine("  -v  Print verbose compilation info");
         }
     }
 }
